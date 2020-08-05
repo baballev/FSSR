@@ -19,8 +19,8 @@ from models import *
 from meta import Meta
 import utils
 from loss_functions import perceptionLoss, ultimateLoss
-from benchmark.PSNR import meanPSNR
-from benchmark.SSIM import meanSSIM
+#from benchmark.PSNR import meanPSNR
+#from benchmark.SSIM import meanSSIM
 
 ## Training
 def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
