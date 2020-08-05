@@ -45,7 +45,7 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
             verbose_loss = 0.0
             for i, data in enumerate(trainloader):
                 support_data, support_label, query_data, query_label = data[0].to(device), data[1].to(device), data[2].to(device), data[3].to(device)
-
+                #print(query_label.size())
                 loss = meta_learner(support_data, support_label, query_data, query_label)
                 print(loss)
 
@@ -116,11 +116,11 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
     transform = torchvision.transforms.Compose([transforms.ToTensor()])
 
     # Data loading
-    trainset = utils.DADataset(train_path, transform=transform, num_shot=10, is_valid_file=utils.isFileNotCorrupted, scale_factor=scale_factor)
+    trainset = utils.DADataset(train_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4) # Batch must be composed of images of the same size if >1
     print("Found " + str(len(trainloader)*batch_size) + " images in " + train_path, flush=True)
 
-    validset = utils.DADataset(valid_path, transform=transform, num_shot=10, is_valid_file=utils.isFileNotCorrupted, scale_factor=scale_factor)
+    validset = utils.DADataset(valid_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor)
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=4)
     print("Found " + str(len(validloader)*batch_size) + " images in " + valid_path, flush=True)
 

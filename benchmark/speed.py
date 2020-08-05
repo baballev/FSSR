@@ -13,7 +13,7 @@ def speedMetric(in_path, tmp_folder, image_nb, weights_path, device_name, batch_
 
     ## Preprocessing
     # Select Random image and create tmp dir if needed
-    images =  [in_path + f for f in os.listdir(in_path) if utils.isFileNotCorrupted(f)]
+    images =  [in_path + f for f in os.listdir(in_path) if utils.is_file_not_corrupted(f)]
     images = np.random.permutation(images)[:image_nb]
     if not(os.path.exists(tmp_folder)):
         os.mkdir(tmp_folder)
@@ -46,7 +46,7 @@ def speedMetric(in_path, tmp_folder, image_nb, weights_path, device_name, batch_
 
     # Declare dataloaders
 
-    set = utils.AutoEncoder2Dataset(tmp_folder, transform=transforms.Compose([transforms.ToTensor()]), is_valid_file=utils.isFileNotCorrupted, color_mode=color_mode, scale_factor=scale_factor)
+    set = utils.AutoEncoder2Dataset(tmp_folder, transform=transforms.Compose([transforms.ToTensor()]), is_valid_file=utils.is_file_not_corrupted, color_mode=color_mode, scale_factor=scale_factor)
     loader = torch.utils.data.DataLoader(set, batch_size=batch_size, shuffle=True, num_workers=0)
     '''setCb = torchvision.datasets.ImageFolder(tmp_folder, transform=transforms.Compose([getCb, transforms.Resize((height*scale_factor, width*scale_factor), interpolation= Image.BICUBIC),  transforms.ToTensor()]))
     loaderCb = torch.utils.data.DataLoader(setCb, batch_size=batch_size, shuffle=False)
