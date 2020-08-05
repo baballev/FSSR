@@ -131,13 +131,13 @@ class Learner(nn.Module):
         for name, param in self.config:
             if name is 'conv2d':
                 w, b = vars[idx], vars[idx + 1]
-                # remember to keep synchrozied of forward_encoder and forward_decoder!
+                # remember to keep synchronized of forward_encoder and forward_decoder!
                 x = F.conv2d(x, w, b, stride=param[4], padding=param[5])
                 idx += 2
                 # print(name, param, '\tout:', x.shape)
             elif name is 'convt2d':
                 w, b = vars[idx], vars[idx + 1]
-                # remember to keep synchrozied of forward_encoder and forward_decoder!
+                # remember to keep synchronized of forward_encoder and forward_decoder!
                 x = F.conv_transpose2d(x, w, b, stride=param[4], padding=param[5])
                 idx += 2
                 # print(name, param, '\tout:', x.shape)
@@ -264,6 +264,7 @@ class Meta(nn.Module):
         :return:
         """
         task_num, setsz, c_, h, w = x_spt.size()
+        # The number of tasks handled is basically the batch size. Default will be = 1.
         querysz = x_qry.size(1)
 
         losses_q = [0 for _ in range(self.update_step + 1)]  # losses_q[i] is the loss on step i
@@ -274,32 +275,23 @@ class Meta(nn.Module):
 
             # 1. run the i-th task and compute loss for k=0
             reconstructed = self.net(x_spt[i], vars=None, bn_training=True)
-            loss = F.mse_loss(reconstructed, y_spt[i])                      # ToDo: Make the loss function customizable.
+            loss = F.mse_loss(reconstructed, y_spt[i]) # ToDo: Make the loss function customizable.
             grad = torch.autograd.grad(loss, self.net.parameters())
             fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, self.net.parameters())))
 
             # this is the loss and accuracy before first update
             with torch.no_grad():
                 # [setsz, nway]
-                reconstructed_q = self.net(x_qry[i], self.net.parameters(), bn_training=True)
-                loss_q = F.mse_loss(reconstructed_q, y_qry[i])
+                reconstructed_q = self.net(x_qry, self.net.parameters(), bn_training=True) # not updated weights
+                loss_q = F.mse_loss(reconstructed_q, y_qry)
                 losses_q[0] += loss_q
-
-                # pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
-                # correct = torch.eq(pred_q, y_qry[i]).sum().item()
-                # corrects[0] = corrects[0] + correct
 
             # this is the loss and accuracy after the first update
             with torch.no_grad():
                 # [setsz, nway]
-                reconstructed_q = self.net(x_qry[i], fast_weights, bn_training=True)
-                loss_q = F.mse_loss(reconstructed_q, y_qry[i])
+                reconstructed_q = self.net(x_qry, fast_weights, bn_training=True) # updated weights
+                loss_q = F.mse_loss(reconstructed_q, y_qry)
                 losses_q[1] += loss_q
-
-                # [setsz]
-                #pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
-                #correct = torch.eq(pred_q, y_qry[i]).sum().item()
-                #corrects[1] = corrects[1] + correct
 
             for k in range(1, self.update_step):
                 # 1. run the i-th task and compute loss for k=1~K-1
@@ -310,20 +302,16 @@ class Meta(nn.Module):
                 # 3. theta_pi = theta_pi - train_lr * grad
                 fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, fast_weights)))
 
-                reconstructed_q = self.net(x_qry[i], fast_weights, bn_training=True)
+                # Keep track of the loss on the query set
+                reconstructed_q = self.net(x_qry, fast_weights, bn_training=True)
                 # loss_q will be overwritten and just keep the loss_q on last update step.
-                loss_q = F.mse_loss(reconstructed_q, y_qry[i])
+                loss_q = F.mse_loss(reconstructed_q, y_qry)
                 losses_q[k + 1] += loss_q
-                '''
-                with torch.no_grad():
-                    pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
-                    correct = torch.eq(pred_q, y_qry[i]).sum().item()  # convert to numpy
-                    corrects[k + 1] = corrects[k + 1] + correct
-                '''
 
         # end of all tasks
         # sum over all losses on query set across all tasks
         loss_q = losses_q[-1] / task_num
+        # THIS IS THE SUM OF THE LOSSES OVER ALL k BECAUSE WE DID NOT RESET GRADS WITH zero_grad() at each new step SO BY DEFAULT PYTORCH SUM THEM UP (because it's useful for LSTM and other stuff).
 
         # optimize theta parameters
         self.meta_optim.zero_grad()
@@ -336,7 +324,7 @@ class Meta(nn.Module):
         return loss_q.item()
 
 
-    def finetunning(self, x_spt, y_spt, x_qry, y_qry):
+    def finetuning(self, x_spt, y_spt, x_qry, y_qry):
         """
         :param x_spt:   [setsz, c_, h, w]
         :param y_spt:   [setsz, c_, h, w]
@@ -347,9 +335,10 @@ class Meta(nn.Module):
         assert len(x_spt.shape) == 4
 
         querysz = x_qry.size(0)
+        task_num = x_spt.size()[0]
 
         # in order to not ruin the state of running_mean/variance and bn_weight/bias
-        # we finetunning on the copied model instead of self.net
+        # we fine tuning on the copied model instead of self.net
         net = deepcopy(self.net)
 
         losses_q = [0 for _ in range(self.update_step + 1)]
@@ -364,16 +353,15 @@ class Meta(nn.Module):
         with torch.no_grad():
             # [setsz, nway]
             reconstructed_q = net(x_qry, net.parameters(), bn_training=True)
-            # [setsz]
-            #pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
-            # scalar
-            #correct = torch.eq(pred_q, y_qry).sum().item()
-            #corrects[0] = corrects[0] + correct
+            loss_q = F.mse_loss(reconstructed_q, y_qry)
+            losses_q[0] += loss_q
 
         # this is the loss and accuracy after the first update
         with torch.no_grad():
             # [setsz, nway]
             reconstructed_q = net(x_qry, fast_weights, bn_training=True)
+            loss_q = F.mse_loss(reconstructed_q, y_qry)
+            losses_q[1] += loss_q
             # [setsz]
             #pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
             # scalar
@@ -393,18 +381,12 @@ class Meta(nn.Module):
             # loss_q will be overwritten and just keep the loss_q on last update step.
             loss_q = F.mse_loss(reconstructed_q, y_qry)
             losses_q[k + 1] += loss_q
-            '''
-            with torch.no_grad():
-                pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
-                correct = torch.eq(pred_q, y_qry).sum().item()  # convert to numpy
-                corrects[k + 1] = corrects[k + 1] + correct
-            '''
 
         del net
 
-        #accs = np.array(corrects) / querysz
+        loss_q = losses_q[-1] / task_num
 
-        return# accs
+        return loss_q
 
 
 

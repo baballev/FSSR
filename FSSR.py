@@ -26,7 +26,7 @@ from benchmark.SSIM import meanSSIM
 def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
 
     ## Main loop
-    def trainModel(model, loss_function, optimizer, epochs_nb, num_shot=10):
+    def MAMLtrain(model, loss_function, epochs_nb, num_shot=10):
         since = time.time()
         best_model = copy.deepcopy(model.state_dict())
         best_loss = 6500000.0
@@ -44,18 +44,14 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
             running_loss = 0.0
             verbose_loss = 0.0
             for i, data in enumerate(trainloader):
-                support_data, support_label, query_data, query_label = data[0], data[1].to(device), data[2].to(device), data[3].to(device)
-                optimizer.zero_grad()
-                out = torch.zeros_like(support_label).to(device)
-                for i in range(1, num_shot):
-                    pass # ToDo: change
-                loss = loss_function(inp, real)
-                loss.backward()
-                optimizer.step()
-                if i%100 == 0:
+                support_data, support_label, query_data, query_label = data[0].to(device), data[1].to(device), data[2].to(device), data[3].to(device)
+
+                loss = meta_learner(support_data, support_label, query_data, query_label)
+
+                if i%20 == 0:
                     print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
-                running_loss += loss.item()
-                verbose_loss += loss.item()
+                running_loss += loss
+                verbose_loss += loss
                 if i% 100 == 0 and i !=0:
                     print("Loss over last 100 batches: " + str(verbose_loss/(100*batch_size)), flush=True)
                     verbose_loss = 0.0
@@ -71,17 +67,17 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
             # Validation
             running_loss = 0.0
             verbose_loss = 0.0
-            with torch.no_grad():
-                for i, data in enumerate(validloader):
-                    inp, real = data[0].to(device), data[1].to(device)
-                    inp = model(inp)
-                    loss = loss_function(inp, real)
-                    running_loss += loss.item()
+            for i, data in enumerate(validloader):
+                support_data, support_label, query_data, query_label = data[0].to(device).squeeze(0), data[1].to(device).squeeze(0), data[2].to(device).squeeze(0), data[3].to(device).squeeze(0)
 
-                # Verbose 3
-                if verbose:
-                    epoch_loss = running_loss / (valid_size*batch_size)
-                    print('Validation Loss: {:.7f}'.format(epoch_loss), flush=True)
+                loss = model.finetuning(support_data, support_label, query_data, query_label)
+
+                running_loss += loss
+
+            # Verbose 3
+            if verbose:
+                epoch_loss = running_loss / (valid_size*batch_size)
+                print('Validation Loss: {:.7f}'.format(epoch_loss), flush=True)
 
             # Copy the model if it gets better with validation
             if epoch_loss < best_loss:
@@ -92,7 +88,6 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
             time_elapsed = time.time() - since
             print("Training finished in {:.0f}m {:.0f}s".format(time_elapsed//60, time_elapsed % 60), flush=True)
             print("Best validation loss: " + str(best_loss), flush=True)
-
 
         model.load_state_dict(best_model) # In place anyway
         return model # Returning just in case
@@ -112,11 +107,10 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
     # Setup model and hyper parameters
     if network == 'EDSR':
         autoencoder = EDSR(scale=scale_factor)
-        color_mode = 'RGB'
 
     config = autoencoder.getconfig()
 
-    meta_learner = Meta(config, learning_rate, meta_learning_rate, 10, ).to(device)  #ToDo
+    meta_learner = Meta(config, learning_rate, meta_learning_rate, 10, 10).to(device)  #ToDo
 
     transform = torchvision.transforms.Compose([transforms.ToTensor()])
 
@@ -129,8 +123,7 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=4)
     print("Found " + str(len(validloader)*batch_size) + " images in " + valid_path, flush=True)
 
-
-
+    # ToDO: Change weights loading.
     if weights_load is not None: # Load weights for further training if a path was given.
         autoencoder.load_state_dict(torch.load(weights_load))
         print("Loaded weights from: " + str(weights_load), flush=True)
@@ -148,7 +141,7 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
     optimizer = optim.Adam(autoencoder.parameters(), lr=learning_rate, amsgrad=True)
 
     # Start training
-    trainModel(autoencoder, loss_function, optimizer, epoch_nb, num_shot=num_shot)
+    MAMLtrain(meta_learner, loss_function, epoch_nb, num_shot=num_shot)
     makeCheckpoint(autoencoder, save_path)
     return
 

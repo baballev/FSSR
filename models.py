@@ -6,12 +6,14 @@ import torchvision
 
 ### Blocks
 class ResBlock(nn.Module): # From EDSR paper. BatchNorm removed because not useful for SR tasks and it saves memory.
+
     def __init__(self, num_channels, kernel_size=3, act=nn.ReLU(True),res_scale=0.1):
         super(ResBlock, self).__init__()
         self.scale = res_scale
         conv1 = nn.Conv2d(num_channels, num_channels, kernel_size=kernel_size, padding=(kernel_size // 2))
         conv2 = nn.Conv2d(num_channels, num_channels, kernel_size=kernel_size, padding=(kernel_size // 2))
         self.body = nn.Sequential(conv1, act, conv2)
+
     def forward(self, x):
         y = self.body(x).mul(self.scale) # scale is here to avoid numerical unstability.
         y += x
@@ -74,7 +76,7 @@ class MeanShift(nn.Conv2d): # ToDo: faire des stats sur le dataset pour + accura
 ## EDSR:
 # Code adapted from the pytorch implementation of CAR: https://github.com/sunwj/CAR/
 class EDSR(nn.Module):
-    def __init__(self, n_resblocks=32, n_feats=256, scale=2):
+    def __init__(self, n_resblocks=8, n_feats=64, scale=2):
         super(EDSR, self).__init__()
         self.scale_factor = scale
 
