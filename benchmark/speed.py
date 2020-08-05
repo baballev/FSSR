@@ -1,9 +1,7 @@
 import os
 import time
 import numpy as np
-import torch
 import torchvision.transforms as transforms
-import torchvision
 from PIL import Image
 
 os.chdir(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))

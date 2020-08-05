@@ -14,7 +14,7 @@ import sys
 import cv2
 import torchvision.io
 
-os.chdir('E:/Programmation/Python/FSSR/')
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 from models import *
 from meta import Meta
 import utils

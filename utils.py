@@ -7,7 +7,7 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
-os.chdir('E:/Programmation/Python/FSSR/')
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 def show_image(input_tensor, n=0):
     y = input_tensor.detach()[n].cpu().numpy().transpose((1, 2, 0))
