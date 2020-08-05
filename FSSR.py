@@ -45,7 +45,6 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
             verbose_loss = 0.0
             for i, data in enumerate(trainloader):
                 support_data, support_label, query_data, query_label = data[0].to(device), data[1].to(device), data[2].to(device), data[3].to(device)
-                #print(query_label.size())
                 loss = meta_learner(support_data, support_label, query_data, query_label)
                 print(loss)
 
@@ -69,8 +68,7 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
             running_loss = 0.0
             verbose_loss = 0.0
             for i, data in enumerate(validloader):
-                support_data, support_label, query_data, query_label = data[0].to(device).squeeze(0), data[1].to(device).squeeze(0), data[2].to(device).squeeze(0), data[3].to(device).squeeze(0)
-
+                support_data, support_label, query_data, query_label = data[0].to(device).squeeze(0), data[1].to(device).squeeze(0), data[2].to(device), data[3].to(device)
                 loss = model.finetuning(support_data, support_label, query_data, query_label)
 
                 running_loss += loss
@@ -111,7 +109,7 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
 
     config = autoencoder.getconfig()
 
-    meta_learner = Meta(config, learning_rate, meta_learning_rate, 10, 10).to(device)  #ToDo
+    meta_learner = Meta(config, learning_rate, meta_learning_rate, 10, 10).to(device)
 
     transform = torchvision.transforms.Compose([transforms.ToTensor()])
 
@@ -126,11 +124,12 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
 
     # ToDO: Change weights loading.
     if weights_load is not None: # Load weights for further training if a path was given.
-        autoencoder.load_state_dict(torch.load(weights_load))
+        meta_learner.load_state_dict(torch.load(weights_load))
         print("Loaded weights from: " + str(weights_load), flush=True)
-    autoencoder.to(device)
 
     print(autoencoder, flush=True)
+
+    del autoencoder
 
     if loss_func == "MSE": # Get the appropriate loss function.
         loss_function = nn.MSELoss()
@@ -139,10 +138,8 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
     elif loss_func == "ultimate":
         loss_function = ultimateLoss(pretrained_model=loss_network)
 
-    optimizer = optim.Adam(autoencoder.parameters(), lr=learning_rate, amsgrad=True)
-
     # Start training
     MAMLtrain(meta_learner, loss_function, epoch_nb, num_shot=num_shot)
-    makeCheckpoint(autoencoder, save_path)
+    makeCheckpoint(meta_learner, save_path)
     return
 
