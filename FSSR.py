@@ -47,6 +47,7 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
                 support_data, support_label, query_data, query_label = data[0].to(device), data[1].to(device), data[2].to(device), data[3].to(device)
 
                 loss = meta_learner(support_data, support_label, query_data, query_label)
+                print(loss)
 
                 if i%20 == 0:
                     print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)

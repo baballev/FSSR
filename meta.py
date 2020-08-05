@@ -62,6 +62,15 @@ class Learner(nn.Module):
                 running_var = nn.Parameter(torch.ones(param[0]), requires_grad=False)
                 self.vars_bn.extend([running_mean, running_var])
 
+            elif (name is 'resblock_leakyrelu') or (name is 'resblock_relu') :
+                w1, w2 = nn.Parameter(torch.ones(*param[:4])), nn.Parameter(torch.ones(*param[:4]))
+                b1, b2 = nn.Parameter(torch.zeros(param[0])), nn.Parameter(torch.zeros(param[0]))
+                torch.nn.init.kaiming_normal_(w1)
+                torch.nn.init.kaiming_normal_(w2)
+                self.vars.append(w1)
+                self.vars.append(b1)
+                self.vars.append(w2)
+                self.vars.append(b2)
 
             elif name in ['tanh', 'relu', 'upsample', 'avg_pool2d', 'max_pool2d',
                           'flatten', 'reshape', 'leakyrelu', 'sigmoid', 'pixelshuffle']:
@@ -92,7 +101,6 @@ class Learner(nn.Module):
                 tmp = 'leakyrelu:(slope:%f)'%(param[0])
                 info += tmp + '\n'
 
-
             elif name is 'avg_pool2d':
                 tmp = 'avg_pool2d:(k:%d, stride:%d, padding:%d)'%(param[0], param[1], param[2])
                 info += tmp + '\n'
@@ -105,6 +113,10 @@ class Learner(nn.Module):
             elif name is 'pixelshuffle':
                 tmp = name + ':' + str((tuple(param)))
                 info += tmp + '\n'
+            elif (name is 'resblock_relu') or (name is 'resblock_leakyrelu'):
+                tmp = name + ':' + str(tuple(param)) # ToDo: Format the string so it is more easy to read
+                info += tmp + '\n'
+
             else:
                 raise NotImplementedError
 
@@ -176,6 +188,22 @@ class Learner(nn.Module):
                 x = F.avg_pool2d(x, param[0], param[1], param[2])
             elif name is 'pixelshuffle':
                 x = F.pixel_shuffle(x, param[0])
+            elif name is 'resblock_leakyrelu':
+                w1, b1, w2, b2 = vars[idx], vars[idx + 1], vars[idx + 2], vars[idx + 3]
+                y = F.conv2d(x, w1, b1, stride=param[4], padding=param[5])
+                y = F.leaky_relu(y, negative_slope=param[7], inplace=param[8])
+                y = F.conv2d(y, w2, b2, stride=param[4], padding=param[5])
+                y = y.mul(param[6])
+                x = x.add(y)
+                idx += 4
+            elif name is 'resblock_relu':
+                w1, b1, w2, b2 = vars[idx], vars[idx + 1], vars[idx + 2], vars[idx + 3]
+                y = F.conv2d(x, w1, b1, stride=param[4], padding=param[5])
+                y = F.relu(y, inplace=param[7])
+                y = F.conv2d(y, w2, b2, stride=param[4], padding=param[5])
+                y = y.mul(param[6])
+                x = x.add(y)
+                idx += 4
 
             else:
                 raise NotImplementedError
@@ -265,11 +293,8 @@ class Meta(nn.Module):
         """
         task_num, setsz, c_, h, w = x_spt.size()
         # The number of tasks handled is basically the batch size. Default will be = 1.
-        querysz = x_qry.size(1)
 
         losses_q = [0 for _ in range(self.update_step + 1)]  # losses_q[i] is the loss on step i
-        # corrects = [0 for _ in range(self.update_step + 1)]
-
 
         for i in range(task_num):
 
@@ -297,6 +322,7 @@ class Meta(nn.Module):
                 # 1. run the i-th task and compute loss for k=1~K-1
                 reconstructed = self.net(x_spt[i], fast_weights, bn_training=True)
                 loss = F.mse_loss(reconstructed, y_spt[i])
+                #print(loss)
                 # 2. compute grad on theta_pi
                 grad = torch.autograd.grad(loss, fast_weights)
                 # 3. theta_pi = theta_pi - train_lr * grad
@@ -307,6 +333,8 @@ class Meta(nn.Module):
                 # loss_q will be overwritten and just keep the loss_q on last update step.
                 loss_q = F.mse_loss(reconstructed_q, y_qry)
                 losses_q[k + 1] += loss_q
+                del reconstructed_q
+                del reconstructed
 
         # end of all tasks
         # sum over all losses on query set across all tasks
@@ -321,8 +349,9 @@ class Meta(nn.Module):
         # 	print(torch.norm(p).item())
         self.meta_optim.step()
 
-        return loss_q.item()
+        del losses_q
 
+        return loss_q.item()
 
     def finetuning(self, x_spt, y_spt, x_qry, y_qry):
         """
@@ -334,7 +363,6 @@ class Meta(nn.Module):
         """
         assert len(x_spt.shape) == 4
 
-        querysz = x_qry.size(0)
         task_num = x_spt.size()[0]
 
         # in order to not ruin the state of running_mean/variance and bn_weight/bias
@@ -362,11 +390,6 @@ class Meta(nn.Module):
             reconstructed_q = net(x_qry, fast_weights, bn_training=True)
             loss_q = F.mse_loss(reconstructed_q, y_qry)
             losses_q[1] += loss_q
-            # [setsz]
-            #pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
-            # scalar
-            #correct = torch.eq(pred_q, y_qry).sum().item()
-            #corrects[1] = corrects[1] + correct
 
         for k in range(1, self.update_step_test):
             # 1. run the i-th task and compute loss for k=1~K-1
@@ -386,7 +409,7 @@ class Meta(nn.Module):
 
         loss_q = losses_q[-1] / task_num
 
-        return loss_q
+        return loss_q.item()
 
 
 

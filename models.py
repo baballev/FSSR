@@ -7,7 +7,7 @@ import torchvision
 ### Blocks
 class ResBlock(nn.Module): # From EDSR paper. BatchNorm removed because not useful for SR tasks and it saves memory.
 
-    def __init__(self, num_channels, kernel_size=3, act=nn.ReLU(True),res_scale=0.1):
+    def __init__(self, num_channels, kernel_size=3, act=nn.ReLU(True), res_scale=0.1):
         super(ResBlock, self).__init__()
         self.scale = res_scale
         conv1 = nn.Conv2d(num_channels, num_channels, kernel_size=kernel_size, padding=(kernel_size // 2))
@@ -90,20 +90,20 @@ class EDSR(nn.Module):
         m_head = [nn.Conv2d(3, n_feats, kernel_size, padding=(kernel_size // 2))]
         self.config.append(('conv2d', [n_feats, 3, kernel_size, kernel_size, 1, (kernel_size // 2)]))
 
+        res_scale = 0.1 # For numerical stability otherwise the values diverge
+
         m_body = [
             ResBlock(
-                n_feats, kernel_size, act=act, res_scale=0.1
+                n_feats, kernel_size, act=act, res_scale=res_scale
             ) for _ in range(n_resblocks)
         ]
         for _ in range(n_resblocks):
-            self.config.append(('conv2d', [n_feats, n_feats, kernel_size, kernel_size, 1, (kernel_size // 2)]))
             if isinstance(act, nn.LeakyReLU):
-                self.config.append(('leakyrelu', [0.01, True])) # default negative slope of the leaky_relu
+                self.config.append(('resblock_leakyrelu', [n_feats, n_feats, kernel_size, kernel_size, 1, (kernel_size//2), res_scale, 0.01, True])) # default res_scale factor and default negative slope of the leaky_relu after the conv2d params
             elif isinstance(act, nn.ReLU):
-                self.config.append(('relu', [True]))
+                self.config.append(('resblock_relu', [n_feats, n_feats, kernel_size, kernel_size, 1, (kernel_size//2), res_scale, True]))
             else:
                 raise NotImplementedError
-            self.config.append(('conv2d', [n_feats, n_feats, kernel_size, kernel_size, 1, (kernel_size // 2)]))
 
         m_body.append(nn.Conv2d(n_feats, n_feats, kernel_size, padding=(kernel_size // 2)))
         self.config.append(('conv2d', [n_feats, n_feats, kernel_size, kernel_size, 1, (kernel_size // 2)]))

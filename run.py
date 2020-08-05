@@ -21,7 +21,7 @@ if __name__ == "__main__":
     parser.add_argument('--train_folder', default='../dataset/FSSR/DIV2K/DIV2K_train_HR/', help="Path to the folder containing the images of the training set. Only for 'train' mode.")
     parser.add_argument('--valid_folder', default='../dataset/FSSR/DIV2K/DIV2K_valid_HR/', help="Path to the folder containing the images of the validation set. Only for 'train' mode.")
     parser.add_argument('--epoch_nb', default=10, type=int, help="Number of epochs for training i.e the number of times the whole training set is iterated over as an integer. Only for 'train' mode.")
-    parser.add_argument('--learning_rate', default=0.01, type=float, help="Learning rate for training with Adam optimizer. Only for 'train' mode.")
+    parser.add_argument('--learning_rate', default=0.001, type=float, help="Learning rate for training with Adam optimizer. Only for 'train' mode.")
     parser.add_argument('--meta_learning_rate', default=0.0001, help="Learning rate of the meta training.")
     parser.add_argument('--loss', default='MSE', choices=['MSE', 'perception', 'ultimate'], help="The loss function to use for training. Percepion loss uses a loss network that can be chosen with --loss_network arg. Only for 'train' mode.")
     parser.add_argument('--loss_network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18'], help="The loss network used for perceptual loss computing. Only for 'train' mode")
