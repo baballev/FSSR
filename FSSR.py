@@ -4,29 +4,25 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
-import numpy as np
 import os
 import time
 import copy
-from PIL import Image, ImageFile
-from datetime import datetime
-import sys
-import cv2
 import torchvision.io
+import warnings
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 from models import *
 from meta import Meta
 import utils
 from loss_functions import perceptionLoss, ultimateLoss
-#from benchmark.PSNR import meanPSNR
-#from benchmark.SSIM import meanSSIM
+
+warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
 ## Training
-def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
+def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
 
     ## Main loop
-    def MAMLtrain(model, loss_function, epochs_nb, num_shot=10):
+    def MAMLtrain(model, epochs_nb):
         since = time.time()
         best_model = copy.deepcopy(model.state_dict())
         best_loss = 6500000.0
@@ -114,15 +110,14 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
     transform = torchvision.transforms.Compose([transforms.ToTensor()])
 
     # Data loading
-    trainset = utils.DADataset(train_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor)
+    trainset = utils.DADataset(train_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor, mode='train')
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4) # Batch must be composed of images of the same size if >1
     print("Found " + str(len(trainloader)*batch_size) + " images in " + train_path, flush=True)
 
-    validset = utils.DADataset(valid_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor)
+    validset = utils.DADataset(valid_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor, mode='train')
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=4)
     print("Found " + str(len(validloader)*batch_size) + " images in " + valid_path, flush=True)
 
-    # ToDO: Change weights loading.
     if weights_load is not None: # Load weights for further training if a path was given.
         meta_learner.load_state_dict(torch.load(weights_load))
         print("Loaded weights from: " + str(weights_load), flush=True)
@@ -134,12 +129,80 @@ def train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_lear
     if loss_func == "MSE": # Get the appropriate loss function.
         loss_function = nn.MSELoss()
     elif loss_func == "perception":
-        loss_function = perceptionLoss(pretrained_model=loss_network)
+        loss_function = perceptionLoss(pretrained_model=loss_network) # ToDo: Embed this code in the meta learner constructor so as to be able to choose which loss function is used by MAML
     elif loss_func == "ultimate":
         loss_function = ultimateLoss(pretrained_model=loss_network)
 
     # Start training
-    MAMLtrain(meta_learner, loss_function, epoch_nb, num_shot=num_shot)
+    MAMLtrain(meta_learner, epoch_nb)
     makeCheckpoint(meta_learner, save_path)
     return
+
+def finetuner_train(train_path, valid_path, batch_size, epoch_nb, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
+
+    def makeCheckpoint(model, save_path):  # Function to save weights
+        torch.save(model.state_dict(), save_path)
+        if verbose:
+            print("Weights saved to: " + save_path, flush=True)
+        return
+
+
+## Upscale - Using the model
+def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verbose, device_name, benchmark=False, network='EDSR'):
+    if device_name == "cuda_if_available":
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    elif device_name == "cpu":
+        device = torch.device("cpu")
+    else:
+        device = torch.device("cuda:0")
+
+    if network == 'EDSR':
+        autoencoder = EDSR()
+
+    config = autoencoder.getconfig()
+
+    meta_learner = Meta(config, learning_rate, 0, 10, 10) # Meta learning rate = 0 so no update is performed at test time. Anyway, it doesn't matter which value is given here because it won't be used at test time.
+    meta_learner.load_state_dict(torch.load(weights_path))
+    #meta_learner.eval() # useful uhu?
+
+    del autoencoder
+
+    scale_factor = 2
+    transform = transforms.ToTensor()
+    testset = utils.DADataset(in_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor, mode='up')
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=4)
+    n = len(testloader)
+    if verbose:
+        print("Found " + str(n) + " images in " + in_path, flush=True)
+        print("Beginning upscaling...", flush=True)
+        print("Clock started ", flush=True)
+
+    since = time.time()
+    for i, data in enumerate(testloader):
+
+        support_data, support_label, query_data = data[0].to(device), data[1].to(device), data[2].to(
+            device)
+        support_data, support_label = support_data.squeeze(0), support_label.squeeze(0)
+
+        if benchmark:
+            pass # ToDo: divide by 2 and then re-upscale
+        else:
+            pass
+        reconstructed = meta_learner.test(support_data, support_label, query_data)
+
+        img = transforms.Compose([torchvision.transforms.ToPILImage(mode='RGB')])(reconstructed[0].cpu())
+
+        img.save(os.path.join(out_path, str(i) + ".png"))
+        if verbose:
+            if i % 100 == 0:
+                print("Image " + str(i) + " / " + str(n), flush=True)
+
+    time_elapsed = time.time() - since
+    if verbose:
+        print("Processed " + str(n) + " images in " + "{:.0f}m {:.0f}s".format(time_elapsed//60, time_elapsed % 60), flush=True)
+        print("Overall speed: " + str(n/time_elapsed) + " images/s", flush=True)
+        print("Upscaling: Done, files saved to " + out_path, flush=True)
+
+    return time_elapsed, n/time_elapsed, n, scale_factor
+
 

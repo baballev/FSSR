@@ -19,6 +19,7 @@ class ResBlock(nn.Module): # From EDSR paper. BatchNorm removed because not usef
         y += x
         return y
 
+
 class Upsampler(nn.Sequential):
     def __init__(self, conv, scale, n_feats, bn=False, act=False, bias=True):
 

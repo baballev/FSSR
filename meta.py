@@ -114,7 +114,7 @@ class Learner(nn.Module):
                 tmp = name + ':' + str((tuple(param)))
                 info += tmp + '\n'
             elif (name is 'resblock_relu') or (name is 'resblock_leakyrelu'):
-                tmp = name + ':' + str(tuple(param)) # ToDo: Format the string so it is more easy to read
+                tmp = name + ':' + str(tuple(param))
                 info += tmp + '\n'
 
             else:
@@ -408,5 +408,33 @@ class Meta(nn.Module):
 
         return loss_q.item()
 
+    def test(self, x_spt, y_spt, x_qry):
+        assert len(x_spt.shape) == 4
+
+        # in order to not ruin the state of running_mean/variance and bn_weight/bias
+        # we fine tuning on the copied model instead of self.net
+
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        net = deepcopy(self.net).to(device)
+
+        # 1. run the i-th task and compute loss for k=0
+        reconstructed = net(x_spt)
+        loss = F.mse_loss(reconstructed, y_spt)
+        grad = torch.autograd.grad(loss, net.parameters())
+        fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, net.parameters())))
+
+        for k in range(1, self.update_step_test):
+            # 1. run the i-th task and compute loss for k=1~K-1
+            reconstructed = net(x_spt, fast_weights, bn_training=True)
+            loss = F.mse_loss(reconstructed, y_spt)
+            # 2. compute grad on theta_pi
+            grad = torch.autograd.grad(loss, fast_weights)
+            # 3. theta_pi = theta_pi - train_lr * grad
+            fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, fast_weights)))
+            if k == self.update_step_test - 1: # Only compute the query after the last updating step and return it.
+                reconstructed_q = net(x_qry, fast_weights, bn_training=True)
+        del net
+
+        return reconstructed_q
 
 

@@ -22,9 +22,9 @@ def is_file_not_corrupted(path):
         path) == 'png')  # Checks the first bytes of the file to see if it's a valid png/jpeg
 
 
-class DADataset(torch.utils.data.Dataset):  # Making artificial tasks with Data Augmentation.
+class DADataset(torch.utils.data.Dataset):  # Making artificial tasks with Data Augmentation. It's very bad if used for validation because it means the validation set is changing at every epoch -> Refrain from using this for validation.
     def __init__(self, images_directory, num_shot, transform, is_valid_file=is_file_not_corrupted, scale_factor=2,
-                 memory_fit_factor=4):
+                 memory_fit_factor=4, mode='train'):
         self.is_valid_file = is_valid_file
         self.image_paths = [os.path.join(images_directory, f) for f in os.listdir(images_directory) if
                             self.is_valid_file(os.path.join(images_directory, f))]
@@ -33,18 +33,21 @@ class DADataset(torch.utils.data.Dataset):  # Making artificial tasks with Data 
         self.scale_factor = scale_factor
         self.num_shot = num_shot
         self.memfact = memory_fit_factor
+        self.mode = mode
 
     def __getitem__(self, index):
 
         original = Image.open(self.image_paths[index]).convert('RGB')
         width, height = original.width, original.height
-
-        resize_height = height // self.memfact
-        resize_width = width // self.memfact
-
-        while resize_height * resize_width > 393*510: # Avoid too big tensors so it fits into 1 GPU.
-            resize_height -= self.memfact
-            resize_width -= int(self.memfact*(width/height))
+        if self.mode == 'train':
+            resize_height = height // self.memfact
+            resize_width = width // self.memfact
+            while resize_height * resize_width > 393 * 510:  # Avoid too big tensors so it fits into 1 GPU.
+                resize_height -= self.memfact
+                resize_width -= int(self.memfact * (width / height))
+        else:
+            resize_height = height
+            resize_width = width
 
         if resize_height % self.scale_factor != 0:
             resize_height -= (resize_height % self.scale_factor)
@@ -72,7 +75,12 @@ class DADataset(torch.utils.data.Dataset):  # Making artificial tasks with Data 
                               interpolation=Image.BICUBIC)(
                 original))  # ToDo: Change code to make the set more customizable?
         del original
-        return torch.stack(support_data), torch.stack(support_label), query_data, query_label
+        if self.mode == 'train':
+            return torch.stack(support_data), torch.stack(support_label), query_data, query_label
+        elif self.mode == 'up':
+            return torch.stack(support_data), torch.stack(support_label), query_label
+        else:
+            raise NotImplementedError
 
     def __len__(self):
         return self.length
