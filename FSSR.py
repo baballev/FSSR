@@ -10,12 +10,12 @@ import copy
 import torchvision.io
 import warnings
 
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
+#os.chdir(os.path.dirname(os.path.realpath(__file__)))
 from models import *
 from meta import Meta
 import utils
 from loss_functions import perceptionLoss, ultimateLoss
-
+from finetuner import FineTuner
 warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
 ## Training
@@ -138,15 +138,6 @@ def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta
     makeCheckpoint(meta_learner, save_path)
     return
 
-def finetuner_train(train_path, valid_path, batch_size, epoch_nb, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
-
-    def makeCheckpoint(model, save_path):  # Function to save weights
-        torch.save(model.state_dict(), save_path)
-        if verbose:
-            print("Weights saved to: " + save_path, flush=True)
-        return
-
-
 ## Upscale - Using the model
 def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verbose, device_name, benchmark=False, network='EDSR'):
     if device_name == "cuda_if_available":
@@ -206,3 +197,8 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
     return time_elapsed, n/time_elapsed, n, scale_factor
 
 
+def finetuneTrain():
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    edsr = EDSR().to(device)
+    m = FineTuner(edsr, 6).to(device)
+    print(m)

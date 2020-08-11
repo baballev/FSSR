@@ -2,12 +2,12 @@ from argparse import ArgumentParser
 import os
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
-from FSSR import meta_train, finetuner_train, MAMLupscale
+from FSSR import meta_train, finetuneTrain, MAMLupscale
 
 ## Parser
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('--mode', default='train', choices=['meta_train', 'meta_upscale', 'evaluation', 'upscale_video'])
+    parser.add_argument('--mode', default='meta_train', choices=['meta_train', 'meta_upscale', 'finetune_train', 'evaluation', 'upscale_video'])
     parser.add_argument('--device', default='cuda_if_available', choices=['cpu', 'cuda', 'cuda_if_available'], help="Leave default to use the GPU if it is available. CPU can't be used for training without changing the code.")
     parser.add_argument('--input', default='../dataset/FSSR/DIV2K/DIV2K_valid_HR/', help="Path to the directory containing the images to upscale. Only used for upscaling or evaluation.")
     parser.add_argument('--output', default='./out/', help="Destination directory for the benchmark in 'evaluation' mode or upscaled images in 'upscale' mode.")
@@ -29,8 +29,8 @@ if __name__ == "__main__":
 
     if opt.mode == 'meta_train':
         meta_train(train_path=opt.train_folder, valid_path=opt.valid_folder, batch_size=opt.batch_size, epoch_nb=opt.epoch_nb, learning_rate=opt.learning_rate, meta_learning_rate=opt.meta_learning_rate, save_path=opt.save_weights, verbose=opt.verbose, weights_load=opt.load_weights, loss_func=opt.loss, loss_network=opt.loss_network, network=opt.network_name)
-    elif opt.mode == 'finetuner_train':
-        finetuner_train() # ToDo
+    elif opt.mode == 'finetune_train':
+        finetuneTrain()
     elif opt.mode == 'meta_upscale':
         MAMLupscale(in_path=opt.input, out_path=opt.output, weights_path=opt.load_weights, learning_rate=opt.learning_rate, batch_size=opt.batch_size, verbose=opt.verbose, device_name=opt.device, network=opt.network_name)
     elif opt.mode == 'evaluation':
