@@ -42,7 +42,7 @@ class DADataset(torch.utils.data.Dataset):  # Making artificial tasks with Data 
         if self.mode == 'train':
             resize_height = height // self.memfact
             resize_width = width // self.memfact
-            while resize_height * resize_width > 393 * 510:  # Avoid too big tensors so it fits into 1 GPU.
+            while resize_height * resize_width > 393 * 510:  # Spaghetis to avoid too big tensors so it fits into 1 GPU.
                 resize_height -= self.memfact
                 resize_width -= int(self.memfact * (width / height))
         else:
@@ -95,26 +95,42 @@ class FSDataset(torch.utils.data.Dataset):
     In this setup, it is a N-1 shot (1 way) super-resolution task.
     '''
 
-    def __init__(self, classes_folder_path, transform, is_valid_file, scale_factor=2):
+    def __init__(self, classes_folder_path, transform, is_valid_file, scale_factor=2, mode='train'):
         self.is_valid_file = is_valid_file
         self.class_paths = [os.path.join(classes_folder_path, f) for f in os.listdir(classes_folder_path) if
                             os.path.isdir(f)]
         self.length = len(self.class_paths)
         self.transform = transform
+        self.mode = mode
         self.scale_factor = scale_factor
 
     def __getitem__(self, index):  # ToDO: Implement the method.
-        image_path = self.class_paths[index]
-        if self.color_mode == 'Y':
-            imageHR = Image.open(image_path).convert('YCbCr').getchannel(0)
-        else:
-            imageHR = Image.open(image_path).convert(self.color_mode)
-        width, height = imageHR.width, imageHR.height
-        imageLR = transforms.Compose(
-            [transforms.Resize((height // self.scale_factor, width // self.scale_factor))] + self.transform.transforms)(
-            imageHR)
-        imageHR = self.transform(imageHR)
-        return imageLR, imageHR
+        transform = transforms.ToTensor()
+        folder = self.class_paths[index]
+        files = os.listdir(folder)
+        support, support_l = [], []
+        for i in range(len(files) - 1):
+            img = Image.open(files[i])
+            resize_width, resize_height = img.width, img.height
+            if resize_height % self.scale_factor != 0:
+                resize_height -= (resize_height % self.scale_factor)
+            if resize_width % self.scale_factor != 0:
+                resize_width -= (resize_width % self.scale_factor)
+            support_l.append(transform(img))
+            support.append((transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img))))
+        support = torch.stack(support)
+        support_l = torch.stack(support_l)
+
+        img = Image.open(files[-1])
+        resize_width, resize_height = img.width, img.height
+        if resize_height % self.scale_factor != 0:
+            resize_height -= (resize_height % self.scale_factor)
+        if resize_width % self.scale_factor != 0:
+            resize_width -= (resize_width % self.scale_factor)
+        query_l = transform(img)
+        query = transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img))
+
+        return support, support_l, query, query_l
 
     def __len__(self):
         return self.length

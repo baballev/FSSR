@@ -12,6 +12,7 @@ from math import log2, floor
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 from models import ResBlock, MeanShift, PoolBlock, ConvBlock
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class FineTuner(nn.Module):
@@ -61,8 +62,8 @@ class FineTuner(nn.Module):
             else:
                 m.append(ConvBlock(2**(3+i), 2**(3+i+1), act=nn.LeakyReLU(inplace=True)))
         m.append(nn.AdaptiveAvgPool2d(output_size=(1, 1)))
-        self.body = nn.Sequential(*m)
-        self.tail = nn.Sequential(nn.Linear(self.block_number, self.parameters_size))
+        self.body = nn.Sequential(*m).to(device)
+        self.tail = nn.Sequential(nn.Linear(self.block_number, self.parameters_size)).to(device)
 
     def forward(self, x_spt, x_qry):
         x_spt = self.body(x_spt)

@@ -22,7 +22,7 @@ class ResBlock(nn.Module): # From EDSR paper. BatchNorm removed because not usef
 
 class PoolBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, act=nn.ReLU(True)):
-        super(self, PoolBlock).__init__()
+        super(PoolBlock, self).__init__()
         conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=0)
         maxpool = nn.MaxPool2d(2)
         self.body = nn.Sequential(conv, act, maxpool)
@@ -33,7 +33,7 @@ class PoolBlock(nn.Module):
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, act=nn.ReLU(True)):
-        super(self, PoolBlock).__init__()
+        super(ConvBlock, self).__init__()
         conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=0)
         self.body = nn.Sequential(conv, act)
 
