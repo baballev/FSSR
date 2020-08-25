@@ -22,7 +22,7 @@ warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of
 def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
 
     ## Main loop
-    def MAMLtrain(model, epochs_nb):
+    def MAMLtrain(model, epochs_nb, trainloader, validloader):
         since = time.time()
         best_model = copy.deepcopy(model.state_dict())
         best_loss = 6500000.0
@@ -134,7 +134,7 @@ def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta
         loss_function = ultimateLoss(pretrained_model=loss_network)
 
     # Start training
-    MAMLtrain(meta_learner, epoch_nb)
+    MAMLtrain(meta_learner, epoch_nb, trainloader, validloader)
     makeCheckpoint(meta_learner, save_path)
     return
 
