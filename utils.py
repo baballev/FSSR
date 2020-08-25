@@ -109,7 +109,7 @@ class FSDataset(torch.utils.data.Dataset):
         files = os.listdir(folder)
         support, support_l = [], []
         for i in range(len(files) - 1):
-            if self.is_valid_file(files[i]):
+            if os.path.exists(files[i]) and self.is_valid_file(files[i]):
                 img = Image.open(files[i])
                 resize_width, resize_height = img.width, img.height
                 if resize_height % self.scale_factor != 0:
