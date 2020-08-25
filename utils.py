@@ -97,7 +97,7 @@ class FSDataset(torch.utils.data.Dataset):
 
     def __init__(self, classes_folder_path, transform, is_valid_file, scale_factor=2, mode='train'):
         self.is_valid_file = is_valid_file
-        self.class_paths = [os.path.join(classes_folder_path, f) for f in os.listdir(classes_folder_path)]
+        self.class_paths = [os.path.join(classes_folder_path, f) for f in os.listdir(classes_folder_path) if os.path.isdir(os.path.join(classes_folder_path, f))]
         self.length = len(self.class_paths)
         self.transform = transform
         self.mode = mode
@@ -109,14 +109,15 @@ class FSDataset(torch.utils.data.Dataset):
         files = os.listdir(folder)
         support, support_l = [], []
         for i in range(len(files) - 1):
-            img = Image.open(files[i])
-            resize_width, resize_height = img.width, img.height
-            if resize_height % self.scale_factor != 0:
-                resize_height -= (resize_height % self.scale_factor)
-            if resize_width % self.scale_factor != 0:
-                resize_width -= (resize_width % self.scale_factor)
-            support_l.append(transform(img))
-            support.append((transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img))))
+            if self.is_valid_file(files[i]):
+                img = Image.open(files[i])
+                resize_width, resize_height = img.width, img.height
+                if resize_height % self.scale_factor != 0:
+                    resize_height -= (resize_height % self.scale_factor)
+                if resize_width % self.scale_factor != 0:
+                    resize_width -= (resize_width % self.scale_factor)
+                support_l.append(transform(img))
+                support.append((transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img))))
         support = torch.stack(support)
         support_l = torch.stack(support_l)
 
