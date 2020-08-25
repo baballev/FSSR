@@ -97,7 +97,7 @@ class FSDataset(torch.utils.data.Dataset):
 
     def __init__(self, classes_folder_path, transform, is_valid_file, scale_factor=2, mode='train'):
         self.is_valid_file = is_valid_file
-        self.class_paths = [os.path.join(classes_folder_path, f) for f in os.listdir(classes_folder_path) if os.path.isdir(os.path.join(classes_folder_path, f))]
+        self.class_paths = [os.path.join(classes_folder_path, f) for f in os.listdir(classes_folder_path) if os.path.isdir(os.path.join(classes_folder_path, f)) and len(os.listdir(os.path.join(classes_folder_path, f))) > 2]
         self.length = len(self.class_paths)
         self.transform = transform
         self.mode = mode
