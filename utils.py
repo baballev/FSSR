@@ -117,7 +117,7 @@ class FSDataset(torch.utils.data.Dataset):
                 if resize_width % self.scale_factor != 0:
                     resize_width -= (resize_width % self.scale_factor)
                 support_l.append(transform(img))
-                support.append((transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img))))
+                support.append(transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img)))
         support = torch.stack(support)
         support_l = torch.stack(support_l)
 
