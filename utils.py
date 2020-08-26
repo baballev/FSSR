@@ -106,18 +106,17 @@ class FSDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):  # ToDO: Implement the method.
         transform = transforms.ToTensor()
         folder = self.class_paths[index]
-        files = os.listdir(folder)
+        files = [os.path.join(folder, f) for f in os.listdir(folder)]
         support, support_l = [], []
         for i in range(len(files) - 1):
-            if os.path.exists(files[i]) and self.is_valid_file(files[i]):
-                img = Image.open(files[i])
-                resize_width, resize_height = img.width, img.height
-                if resize_height % self.scale_factor != 0:
-                    resize_height -= (resize_height % self.scale_factor)
-                if resize_width % self.scale_factor != 0:
-                    resize_width -= (resize_width % self.scale_factor)
-                support_l.append(transform(img))
-                support.append(transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img)))
+            img = Image.open(files[i])
+            resize_width, resize_height = img.width, img.height
+            if resize_height % self.scale_factor != 0:
+                resize_height -= (resize_height % self.scale_factor)
+            if resize_width % self.scale_factor != 0:
+                resize_width -= (resize_width % self.scale_factor)
+            support_l.append(transform(img))
+            support.append(transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img)))
         support = torch.stack(support)
         support_l = torch.stack(support_l)
 
