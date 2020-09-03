@@ -128,8 +128,12 @@ class FSDataset(torch.utils.data.Dataset):
             resize_width -= (resize_width % self.scale_factor)
         query_l = transform(img)
         query = transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img))
-
-        return support, support_l, query, query_l
+        if self.mode == 'train':
+            return support, support_l, query, query_l
+        elif self.mode == 'up':
+            return support, support_l, query
+        else:
+            raise NotImplementedError
 
     def __len__(self):
         return self.length

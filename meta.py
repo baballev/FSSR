@@ -419,6 +419,7 @@ class Meta(nn.Module):
 
         # 1. run the i-th task and compute loss for k=0
         reconstructed = net(x_spt)
+        reconstructed_without = net(x_qry).data
         loss = F.mse_loss(reconstructed, y_spt)
         grad = torch.autograd.grad(loss, net.parameters())
         fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, net.parameters())))
@@ -435,6 +436,6 @@ class Meta(nn.Module):
                 reconstructed_q = net(x_qry, fast_weights, bn_training=True)
         del net
 
-        return reconstructed_q
+        return reconstructed_q, reconstructed_without
 
 

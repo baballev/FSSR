@@ -159,7 +159,7 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
 
     scale_factor = 2
     transform = transforms.ToTensor()
-    testset = utils.DADataset(in_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor, mode='up')
+    testset = utils.FSDataset(in_path, transform=transform, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor, mode='train')
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=4)
     n = len(testloader)
     if verbose:
@@ -170,18 +170,21 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
     since = time.time()
     for i, data in enumerate(testloader):
 
-        support_data, support_label, query_data = data[0].to(device), data[1].to(device), data[2].to(
-            device)
+        support_data, support_label, query_data, query_label = data[0].to(device), data[1].to(device), data[2].to(
+            device), data[3].to(device)
+        query_label = query_label.squeeze(0)
         support_data, support_label = support_data.squeeze(0), support_label.squeeze(0)
 
         if benchmark:
             pass # ToDo: divide by 2 and then re-upscale
         else:
             pass
-        reconstructed = meta_learner.test(support_data, support_label, query_data)
-
+        reconstructed, reconstructed_without = meta_learner.test(support_data, support_label, query_data)
         img = transforms.Compose([torchvision.transforms.ToPILImage(mode='RGB')])(reconstructed[0].cpu())
-
+        img_l = transforms.ToPILImage(mode='RGB')(query_label.cpu())
+        img_without = transforms.ToPILImage(mode='RGB')(reconstructed_without[0].cpu())
+        img_without.save(os.path.join(os.path.join(out_path, 'without/'), str(i) + '.png'))
+        img_l.save(os.path.join(os.path.join(out_path, 'labels/'), str(i) + '.png'))
         img.save(os.path.join(out_path, str(i) + ".png"))
         if verbose:
             if i % 100 == 0:

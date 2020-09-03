@@ -1,6 +1,7 @@
 import torchvision.transforms as transforms
 import torch
 import os
+from utils import DADataset
 import sys
 from PIL import Image
 """
@@ -11,8 +12,8 @@ print(os.curdir)
 #from utils import DADataset
 
 
-output_path = ''
-input_path = ''
+output_path = 'out/'
+input_path = '../dataset/FSSR/DIV2K/DIV2K_valid_HR/'
 
 shot_num = 10
 
@@ -26,7 +27,10 @@ for i, data in enumerate(validloader):
     spt_label, q_label = data[1], data[3]
     for k in range(shot_num):
         img = img_transform(spt_label[:, k, :, :, :][0])
-        img.save(os.path.join(os.path.join(output_path, str(i)), str(k) + '.png'))
+        if k < 10:
+            img.save(os.path.join(os.path.join(output_path, str(i)), '0' + str(k) + '.png'))
+        else:
+            img.save(os.path.join(os.path.join(output_path, str(i)), str(k) + '.png'))
     img = img_transform(q_label[0])
     img.save(os.path.join(os.path.join(output_path, str(i)), str(shot_num) + '.png'))
 

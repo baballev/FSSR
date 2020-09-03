@@ -3,6 +3,7 @@ import os
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 from FSSR import meta_train, finetuneTrain, MAMLupscale
+from evaluation import evaluation
 
 ## Parser
 if __name__ == "__main__":
@@ -12,7 +13,6 @@ if __name__ == "__main__":
     parser.add_argument('--input', default='../dataset/FSSR/DIV2K/DIV2K_valid_HR/', help="Path to the directory containing the images to upscale. Only used for upscaling or evaluation.")
     parser.add_argument('--output', default='./out/', help="Destination directory for the benchmark in 'evaluation' mode or upscaled images in 'upscale' mode.")
     parser.add_argument('--verbose', default=True, type=bool, choices=[True, False], help="Wether the script print info in stdout.")
-    parser.add_argument('--tmp_folder', default='./benchmark/tmp/', help="Temporary folder to store upscaled images when evaluating a model. Only for 'evaluation' mode.")
     parser.add_argument('--network_name',  default='EDSR', choices=['EDSR'], help="Indicates which network is being used.")
     parser.add_argument('--batch_size', default=1, type=int, help="Batch size i.e the number of images for each training iteration as an integer.")
 
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     elif opt.mode == 'meta_upscale':
         MAMLupscale(in_path=opt.input, out_path=opt.output, weights_path=opt.load_weights, learning_rate=opt.learning_rate, batch_size=opt.batch_size, verbose=opt.verbose, device_name=opt.device, network=opt.network_name)
     elif opt.mode == 'evaluation':
-        pass
+        evaluation(in_path=opt.input, out_path=opt.output, verbose=True)
     elif opt.mode == 'upscale_video':
         pass
 
