@@ -41,7 +41,7 @@ def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta
             verbose_loss = 0.0
             for i, data in enumerate(trainloader):
                 support_data, support_label, query_data, query_label = data[0].to(device), data[1].to(device), data[2].to(device), data[3].to(device)
-                loss = meta_learner(support_data, support_label, query_data, query_label)
+                loss = model(support_data, support_label, query_data, query_label)
                 print(loss)
 
                 if i%20 == 0:
@@ -133,7 +133,7 @@ def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta
         loss_function = ultimateLoss(pretrained_model=loss_network)
 
     # Start training
-    MAMLtrain(meta_learner, epoch_nb, trainloader, validloader)
+    meta_learner = MAMLtrain(meta_learner, epoch_nb, trainloader, validloader)
     makeCheckpoint(meta_learner, save_path)
     return
 
@@ -204,3 +204,96 @@ def finetuneTrain():
     edsr = EDSR(2, 16, 2).to(device)
     m = FineTuner(edsr, 6).to(device)
     print(m)
+
+def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=None, save_weights='weights.pt', model_name='EDSR'):
+    device = torch.device('cuda:0')
+    verbose = True
+    if model_name == 'EDSR':
+        super_res_model = EDSR().to(device)
+
+    if load_weights is not None:
+        super_res_model.load_state_dict(torch.load(load_weights))
+        print("Loaded weights from: " + str(load_weights), flush=True)
+
+    def train(model, epochs_nb, trainloader, validloader):
+        since = time.time()
+        best_model = copy.deepcopy(model.state_dict())
+        best_loss = 6500000.0
+        train_size = len(trainloader)
+        valid_size = len(validloader)
+        print("Training start", flush=True)
+
+        for epoch in range(epochs_nb):
+            # Verbose 1
+            if verbose:
+                print("Epoch [" + str(epoch+1) + " / " + str(epochs_nb) + "]", flush=True)
+                print("-" * 10, flush=True)
+
+            # Training
+            running_loss = 0.0
+            verbose_loss = 0.0
+            for i, data in enumerate(trainloader):
+                query, label = data[2].to(device), data[3].to(device)
+
+                out = model(query)
+                loss = F.mse_loss(out, label)
+
+                print(loss)
+
+                if i%20 == 0:
+                    print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
+                running_loss += loss
+                verbose_loss += loss
+                if i% 100 == 0 and i !=0:
+                    print("Loss over last 100 batches: " + str(verbose_loss/(100*batch_size)), flush=True)
+                    verbose_loss = 0.0
+
+            # Verbose 2
+            if verbose:
+                epoch_loss = running_loss / (train_size*batch_size)
+                print(" ", flush=True)
+                print(" ", flush=True)
+                print("****************")
+                print('Training Loss: {:.7f}'.format(epoch_loss), flush=True)
+            # Validation
+            running_loss = 0.0
+            verbose_loss = 0.0
+            for i, data in enumerate(validloader):
+                query, label =  data[2].to(device), data[3].to(device)
+                out = model(query)
+                loss = F.mse_loss(query, label)
+
+                running_loss += loss
+
+            # Verbose 3
+            if verbose:
+                epoch_loss = running_loss / (valid_size*batch_size)
+                print('Validation Loss: {:.7f}'.format(epoch_loss), flush=True)
+
+            # Copy the model if it gets better with validation
+            if epoch_loss < best_loss:
+                best_loss = epoch_loss
+                best_model = copy.deepcopy(model.state_dict())
+        # Verbose 4
+        if verbose:
+            time_elapsed = time.time() - since
+            print("Training finished in {:.0f}m {:.0f}s".format(time_elapsed//60, time_elapsed % 60), flush=True)
+            print("Best validation loss: " + str(best_loss), flush=True)
+
+        model.load_state_dict(best_model) # In place anyway
+        return model # Returning just in case
+
+    def makeCheckpoint(model, save_path): # Function to save weights
+        torch.save(model.state_dict(), save_path)
+        if verbose:
+            print("Weights saved to: " + save_path, flush=True)
+        return
+
+    trainset = utils.DADataset(train_path, num_shot=1, transform=transforms.ToTensor())
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
+    validset = utils.FSDataset(valid_path, transform=transforms.ToTensor())
+    validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
+    super_res_model = train(super_res_model, epoch_nb, trainloader, validloader)
+    makeCheckpoint(super_res_model, save_weights)
+
+    return
