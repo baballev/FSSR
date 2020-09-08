@@ -17,7 +17,7 @@ import sys
 
 
 from benchmark.PSNR import meanPSNR
-from benchmark.SSIM import meanSSIM
+#from benchmark.SSIM import meanSSIM
 from benchmark.speed import speedMetric
 
 def evaluation(in_path, out_path, verbose):
