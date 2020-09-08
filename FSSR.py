@@ -215,7 +215,7 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
         super_res_model.load_state_dict(torch.load(load_weights))
         print("Loaded weights from: " + str(load_weights), flush=True)
 
-    def train(model, epochs_nb, trainloader, validloader):
+    def train(model, epochs_nb, trainloader, validloader, optimizer):
         since = time.time()
         best_model = copy.deepcopy(model.state_dict())
         best_loss = 6500000.0
@@ -234,13 +234,14 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
             verbose_loss = 0.0
             for i, data in enumerate(trainloader):
                 query, label = data[2].to(device), data[3].to(device)
-
+                optimizer.zero_grad()
                 out = model(query)
                 loss = F.mse_loss(out, label)
-
+                loss.backward()
+                optimizer.step()
                 print(loss)
 
-                if i%20 == 0:
+                if i%100 == 0:
                     print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
                 running_loss += loss
                 verbose_loss += loss
@@ -260,8 +261,9 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
             verbose_loss = 0.0
             for i, data in enumerate(validloader):
                 query, label =  data[2].to(device), data[3].to(device)
+
                 out = model(query)
-                loss = F.mse_loss(query, label)
+                loss = F.mse_loss(out, label)
 
                 running_loss += loss
 
@@ -293,7 +295,9 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
     validset = utils.FSDataset(valid_path, transform=transforms.ToTensor())
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
-    super_res_model = train(super_res_model, epoch_nb, trainloader, validloader)
+
+    optimizer = optim.Adam(super_res_model.parameters(), lr=0.0001, amsgrad=True)
+    super_res_model = train(super_res_model, epoch_nb, trainloader, validloader, optimizer)
     makeCheckpoint(super_res_model, save_weights)
 
     return

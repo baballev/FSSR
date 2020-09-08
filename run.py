@@ -37,7 +37,7 @@ if __name__ == "__main__":
         evaluation(in_path=opt.input, out_path=opt.output, verbose=True)
     elif opt.mode == 'upscale_video':
         pass
-    elif opt.mode == 'model_name':
+    elif opt.mode == 'model_train':
         model_train(train_path=opt.train_folder, valid_path=opt.valid_folder, epoch_nb=opt.epoch_nb, batch_size=opt.batch_size, load_weights=opt.load_weights, save_weights=opt.save_weights)
 
     else:
