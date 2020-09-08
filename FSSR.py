@@ -235,16 +235,16 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
             for i, data in enumerate(trainloader):
                 query, label = data[2].to(device), data[3].to(device)
                 optimizer.zero_grad()
-                out = model(query)
-                loss = F.mse_loss(out, label)
+                query = model(query)
+                loss = F.mse_loss(query, label)
                 loss.backward()
                 optimizer.step()
-                print(loss)
+                print(loss.item())
 
                 if i%100 == 0:
                     print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
-                running_loss += loss
-                verbose_loss += loss
+                running_loss += loss.item()
+                verbose_loss += loss.item()
                 if i% 100 == 0 and i !=0:
                     print("Loss over last 100 batches: " + str(verbose_loss/(100*batch_size)), flush=True)
                     verbose_loss = 0.0
@@ -259,18 +259,17 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
             # Validation
             running_loss = 0.0
             verbose_loss = 0.0
-            for i, data in enumerate(validloader):
-                query, label =  data[2].to(device), data[3].to(device)
+            with torch.no_grad():
+                for i, data in enumerate(validloader):
+                    query, label =  data[2].to(device), data[3].to(device)
+                    query = model(query)
+                    loss = F.mse_loss(query, label)
+                    running_loss += loss.item()
 
-                out = model(query)
-                loss = F.mse_loss(out, label)
-
-                running_loss += loss
-
-            # Verbose 3
-            if verbose:
-                epoch_loss = running_loss / (valid_size*batch_size)
-                print('Validation Loss: {:.7f}'.format(epoch_loss), flush=True)
+                # Verbose 3
+                if verbose:
+                    epoch_loss = running_loss / (valid_size*batch_size)
+                    print('Validation Loss: {:.7f}'.format(epoch_loss), flush=True)
 
             # Copy the model if it gets better with validation
             if epoch_loss < best_loss:
