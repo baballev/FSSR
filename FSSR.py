@@ -199,15 +199,28 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
     return time_elapsed, n/time_elapsed, n, scale_factor
 
 
-def finetuneMaml(load_weights, network='EDSR', save_weights=''):
+def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, load_weights, save_weights, network='EDSR'):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     if network == 'EDSR':
-        model = EDSR()
-
+        model = EDSR().to(device)
+    for name, param in model.named_parameters():
+        print(name)
+        print(param)
     config = model.getconfig()
-    learning_rate = 0.001 #ToDo
+    # Data loading
+    transform = transforms.ToTensor()
+    scale_factor = 2
+    trainset = utils.DADataset(train_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted,
+                               scale_factor=scale_factor, mode='train')
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True,
+                                              num_workers=4)  # Batch must be composed of images of the same size if >1
+    print("Found " + str(len(trainloader) * batch_size) + " images in " + train_path, flush=True)
 
-    meta_learner = Meta(config, learning_rate, 0, 10, 10, load_weights=load_weights)
+    validset = utils.FSDataset(valid_path, transform=transform, is_valid_file=utils.is_file_not_corrupted,
+                               scale_factor=scale_factor, mode='train')
+    validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=False, num_workers=0)
+    print("Found " + str(len(validloader) * batch_size) + " images in " + valid_path, flush=True)
+    meta_learner = Meta(config, learning_rate, meta_learning_rate, 10, 10, load_weights=load_weights).to(device)
     return
 
 def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=None, save_weights='weights.pt', model_name='EDSR'):

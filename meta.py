@@ -82,7 +82,7 @@ class Learner(nn.Module):
                     self.vars.append(b2)
 
                 elif name in ['tanh', 'relu', 'upsample', 'avg_pool2d', 'max_pool2d',
-                              'flatten', 'reshape', 'leakyrelu', 'sigmoid', 'pixelshuffle']:
+                              'flatten', 'reshape', 'leakyrelu', 'sigmoid', 'pixelshuffle', 'sub_mean', 'add_mean']:
                     continue
                 else:
                     raise NotImplementedError
@@ -213,7 +213,10 @@ class Learner(nn.Module):
                 y = y.mul(param[6])
                 x = x.add(y)
                 idx += 4
-
+            elif name is 'sub_mean':
+                x = F.conv2d(x, torch.eye(3).view(3,3,1,1).cuda() / torch.Tensor(param[1]).view(3, 1, 1, 1).cuda(), -1 * torch.Tensor(param[0]).cuda() / torch.Tensor(param[1]).cuda())
+            elif name is 'add_mean':
+                x = F.conv2d(x, torch.eye(3).view(3,3,1,1).cuda() / torch.Tensor(param[1]).view(3, 1, 1, 1).cuda(), torch.Tensor(param[0]).cuda() / torch.Tensor(param[1]).cuda())
             else:
                 raise NotImplementedError
 

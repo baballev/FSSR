@@ -30,7 +30,7 @@ if __name__ == "__main__":
     if opt.mode == 'meta_train':
         meta_train(train_path=opt.train_folder, valid_path=opt.valid_folder, batch_size=opt.batch_size, epoch_nb=opt.epoch_nb, learning_rate=opt.learning_rate, meta_learning_rate=opt.meta_learning_rate, save_path=opt.save_weights, verbose=opt.verbose, weights_load=opt.load_weights, loss_func=opt.loss, loss_network=opt.loss_network, network=opt.network_name)
     elif opt.mode == 'finetune_maml':
-        finetuneMaml(load_weights=opt.load_weights)
+        finetuneMaml(train_path=opt.train_folder, valid_path=opt.valid_folder, batch_size=opt.batch_size, epoch_nb=opt.epoch_nb, learning_rate=opt.learning_rate, meta_learning_rate=opt.meta_learning_rate, load_weights=opt.load_weights, save_weights=opt.save_weights, network=opt.network_name)
     elif opt.mode == 'meta_upscale':
         MAMLupscale(in_path=opt.input, out_path=opt.output, weights_path=opt.load_weights, learning_rate=opt.learning_rate, batch_size=opt.batch_size, verbose=opt.verbose, device_name=opt.device, network=opt.network_name)
     elif opt.mode == 'evaluation':

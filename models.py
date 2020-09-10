@@ -107,6 +107,8 @@ class EDSR(nn.Module):
         self.config = []
 
         self.sub_mean = MeanShift(1)
+        self.config.append(('sub_mean', [(0.4488, 0.4371, 0.4040), (1.0, 1.0, 1.0)]))
+
 
         # define head module
         m_head = [nn.Conv2d(3, n_feats, kernel_size, padding=(kernel_size // 2))]
@@ -145,6 +147,7 @@ class EDSR(nn.Module):
         self.tail = nn.Sequential(*m_tail)
 
         self.add_mean = MeanShift(1, sign=1)
+        self.config.append(('add_mean', [(0.4488, 0.4371, 0.4040), (1.0, 1.0, 1.0)]))
 
     def forward(self, x):
         x = self.sub_mean(x)
