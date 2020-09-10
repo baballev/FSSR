@@ -6,14 +6,7 @@ import torchvision.transforms as transforms
 import numpy as np
 import os
 import time
-import copy
-from PIL import Image, ImageFile
 from datetime import datetime
-import imghdr
-import glob # UNIX style path expansion
-import sys
-
-## TODO
 
 
 from benchmark.PSNR import meanPSNR

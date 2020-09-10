@@ -7,10 +7,13 @@ from torch import optim
 import numpy as np
 
 from copy import deepcopy
+from models import EDSR
 
 ## Adapted from: https://github.com/dragen1860/MAML-Pytorch/
+## All credits for the code structure goes to dragen1860.
+
 class Learner(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, load_weights=''):
         """
         :param config: network config file, type:list of (string, list)
         """
@@ -22,61 +25,67 @@ class Learner(nn.Module):
         # running_mean and running_var
         self.vars_bn = nn.ParameterList()
 
-        for i, (name, param) in enumerate(self.config):
-            if name is 'conv2d':
-                # [ch_out, ch_in, kernelsz, kernelsz]
-                w = nn.Parameter(torch.ones(*param[:4]))
-                # gain=1 according to cbfin's implementation
-                torch.nn.init.kaiming_normal_(w)
-                self.vars.append(w)
-                # [ch_out]
-                self.vars.append(nn.Parameter(torch.zeros(param[0])))
+        if load_weights != '':
+            edsr = EDSR()
+            edsr.load_state_dict(torch.load(load_weights))
+            self.vars = nn.ParameterList([param for name, param in edsr.named_parameters() if not(name.startswith('sub') or name.startswith('add'))])
+            del edsr
+        else:
+            for i, (name, param) in enumerate(self.config):
+                if name is 'conv2d':
+                    # [ch_out, ch_in, kernelsz, kernelsz]
+                    w = nn.Parameter(torch.ones(*param[:4]))
+                    # gain=1 according to cbfin's implementation
+                    torch.nn.init.kaiming_normal_(w)
+                    self.vars.append(w)
+                    # [ch_out]
+                    self.vars.append(nn.Parameter(torch.zeros(param[0])))
 
-            elif name is 'convt2d':
-                # [ch_in, ch_out, kernelsz, kernelsz, stride, padding]
-                w = nn.Parameter(torch.ones(*param[:4]))
-                # gain=1 according to cbfin's implementation
-                torch.nn.init.kaiming_normal_(w)
-                self.vars.append(w)
-                # [ch_in, ch_out]
-                self.vars.append(nn.Parameter(torch.zeros(param[1])))
+                elif name is 'convt2d':
+                    # [ch_in, ch_out, kernelsz, kernelsz, stride, padding]
+                    w = nn.Parameter(torch.ones(*param[:4]))
+                    # gain=1 according to cbfin's implementation
+                    torch.nn.init.kaiming_normal_(w)
+                    self.vars.append(w)
+                    # [ch_in, ch_out]
+                    self.vars.append(nn.Parameter(torch.zeros(param[1])))
 
-            elif name is 'linear':
-                # [ch_out, ch_in]
-                w = nn.Parameter(torch.ones(*param))
-                # gain=1 according to cbfinn's implementation
-                torch.nn.init.kaiming_normal_(w)
-                self.vars.append(w)
-                # [ch_out]
-                self.vars.append(nn.Parameter(torch.zeros(param[0])))
+                elif name is 'linear':
+                    # [ch_out, ch_in]
+                    w = nn.Parameter(torch.ones(*param))
+                    # gain=1 according to cbfinn's implementation
+                    torch.nn.init.kaiming_normal_(w)
+                    self.vars.append(w)
+                    # [ch_out]
+                    self.vars.append(nn.Parameter(torch.zeros(param[0])))
 
-            elif name is 'bn':
-                # [ch_out]
-                w = nn.Parameter(torch.ones(param[0]))
-                self.vars.append(w)
-                # [ch_out]
-                self.vars.append(nn.Parameter(torch.zeros(param[0])))
+                elif name is 'bn':
+                    # [ch_out]
+                    w = nn.Parameter(torch.ones(param[0]))
+                    self.vars.append(w)
+                    # [ch_out]
+                    self.vars.append(nn.Parameter(torch.zeros(param[0])))
 
-                # must set requires_grad=False
-                running_mean = nn.Parameter(torch.zeros(param[0]), requires_grad=False)
-                running_var = nn.Parameter(torch.ones(param[0]), requires_grad=False)
-                self.vars_bn.extend([running_mean, running_var])
+                    # must set requires_grad=False
+                    running_mean = nn.Parameter(torch.zeros(param[0]), requires_grad=False)
+                    running_var = nn.Parameter(torch.ones(param[0]), requires_grad=False)
+                    self.vars_bn.extend([running_mean, running_var])
 
-            elif (name is 'resblock_leakyrelu') or (name is 'resblock_relu') :
-                w1, w2 = nn.Parameter(torch.ones(*param[:4])), nn.Parameter(torch.ones(*param[:4]))
-                b1, b2 = nn.Parameter(torch.zeros(param[0])), nn.Parameter(torch.zeros(param[0]))
-                torch.nn.init.kaiming_normal_(w1)
-                torch.nn.init.kaiming_normal_(w2)
-                self.vars.append(w1)
-                self.vars.append(b1)
-                self.vars.append(w2)
-                self.vars.append(b2)
+                elif (name is 'resblock_leakyrelu') or (name is 'resblock_relu') :
+                    w1, w2 = nn.Parameter(torch.ones(*param[:4])), nn.Parameter(torch.ones(*param[:4]))
+                    b1, b2 = nn.Parameter(torch.zeros(param[0])), nn.Parameter(torch.zeros(param[0]))
+                    torch.nn.init.kaiming_normal_(w1)
+                    torch.nn.init.kaiming_normal_(w2)
+                    self.vars.append(w1)
+                    self.vars.append(b1)
+                    self.vars.append(w2)
+                    self.vars.append(b2)
 
-            elif name in ['tanh', 'relu', 'upsample', 'avg_pool2d', 'max_pool2d',
-                          'flatten', 'reshape', 'leakyrelu', 'sigmoid', 'pixelshuffle']:
-                continue
-            else:
-                raise NotImplementedError
+                elif name in ['tanh', 'relu', 'upsample', 'avg_pool2d', 'max_pool2d',
+                              'flatten', 'reshape', 'leakyrelu', 'sigmoid', 'pixelshuffle']:
+                    continue
+                else:
+                    raise NotImplementedError
 
 
     def extra_repr(self):
@@ -240,7 +249,7 @@ class Meta(nn.Module):
     """
     Meta Learner
     """
-    def __init__(self, config, update_lr, meta_lr, update_step, update_step_test, k_support=10):
+    def __init__(self, config, update_lr, meta_lr, update_step, update_step_test, k_support=10, load_weights=''):
         """
         :param args:
         """
@@ -252,7 +261,7 @@ class Meta(nn.Module):
         self.update_step = update_step
         self.update_step_test = update_step_test
 
-        self.net = Learner(config)
+        self.net = Learner(config, load_weights)
         self.meta_optim = optim.Adam(self.net.parameters(), lr=self.meta_lr)
 
 

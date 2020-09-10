@@ -199,11 +199,16 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
     return time_elapsed, n/time_elapsed, n, scale_factor
 
 
-def finetuneTrain():
+def finetuneMaml(load_weights, network='EDSR', save_weights=''):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    edsr = EDSR(2, 16, 2).to(device)
-    m = FineTuner(edsr, 6).to(device)
-    print(m)
+    if network == 'EDSR':
+        model = EDSR()
+
+    config = model.getconfig()
+    learning_rate = 0.001 #ToDo
+
+    meta_learner = Meta(config, learning_rate, 0, 10, 10, load_weights=load_weights)
+    return
 
 def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=None, save_weights='weights.pt', model_name='EDSR'):
     device = torch.device('cuda:0')
