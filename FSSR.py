@@ -199,7 +199,7 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
     return time_elapsed, n/time_elapsed, n, scale_factor
 
 
-def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, load_weights, save_weights, network='EDSR'):
+def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, load_weights, save_weights, finetune_depth, network='EDSR'):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     if network == 'EDSR':
         model = EDSR().to(device)
@@ -221,6 +221,11 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=False, num_workers=0)
     print("Found " + str(len(validloader) * batch_size) + " images in " + valid_path, flush=True)
     meta_learner = Meta(config, learning_rate, meta_learning_rate, 10, 10, load_weights=load_weights).to(device)
+
+    # ToDo: Rework Data Augmentation.
+    # ToDo: First, test to train with maml but by loading pretrained EDSR first on all layers
+    # ToDo: Then, maybe modify meta.py code to be able to only train on the latest layers of the neural network.
+
     return
 
 def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=None, save_weights='weights.pt', model_name='EDSR'):

@@ -131,7 +131,7 @@ class Learner(nn.Module):
 
         return info
 
-    def forward(self, x, vars=None, bn_training=True): # ToDo: Normalize the data with MeanShift like done in EDSR code in models.py
+    def forward(self, x, vars=None, bn_training=True):
         """
         This function can be called by finetunning, however, in finetunning, we dont wish to update
         running_mean/running_var. Thought weights/bias of bn is updated, it has been separated by fast_weights.
@@ -252,7 +252,7 @@ class Meta(nn.Module):
     """
     Meta Learner
     """
-    def __init__(self, config, update_lr, meta_lr, update_step, update_step_test, k_support=10, load_weights=''):
+    def __init__(self, config, update_lr, meta_lr, update_step, update_step_test, k_support=10, load_weights='', finetune_param_nb=0):
         """
         :param args:
         """
@@ -263,7 +263,7 @@ class Meta(nn.Module):
         self.k_spt = k_support
         self.update_step = update_step
         self.update_step_test = update_step_test
-
+        self.finetune_depth = finetune_param_nb
         self.net = Learner(config, load_weights)
         self.meta_optim = optim.Adam(self.net.parameters(), lr=self.meta_lr)
 

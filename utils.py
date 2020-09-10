@@ -7,6 +7,8 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
+import Augmentor  # Data augmentation library
+
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 
@@ -53,6 +55,8 @@ class DADataset(torch.utils.data.Dataset):  # Making artificial tasks with Data 
             resize_height -= (resize_height % self.scale_factor)
         if resize_width % self.scale_factor != 0:
             resize_width -= (resize_width % self.scale_factor)
+
+        # ToDo: DATA AUGMENTATION WITH THE LIBRARY
 
         query_label = self.transform(
             transforms.Resize((resize_height, resize_width), interpolation=Image.BICUBIC)(original))

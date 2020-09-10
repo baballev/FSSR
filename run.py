@@ -25,12 +25,13 @@ if __name__ == "__main__":
     parser.add_argument('--meta_learning_rate', default=0.0001, help="Learning rate of the meta training.")
     parser.add_argument('--loss', default='MSE', choices=['MSE', 'perception', 'ultimate'], help="The loss function to use for training. Percepion loss uses a loss network that can be chosen with --loss_network arg. Only for 'train' mode.")
     parser.add_argument('--loss_network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18'], help="The loss network used for perceptual loss computing. Only for 'train' mode")
+    parser.add_argument('--finetune_depth', default=0, type=int, help="Number of parameter tensors to be finetuned in finetune_maml mode. 0 to modify all layers.")
     opt = parser.parse_args()
 
     if opt.mode == 'meta_train':
         meta_train(train_path=opt.train_folder, valid_path=opt.valid_folder, batch_size=opt.batch_size, epoch_nb=opt.epoch_nb, learning_rate=opt.learning_rate, meta_learning_rate=opt.meta_learning_rate, save_path=opt.save_weights, verbose=opt.verbose, weights_load=opt.load_weights, loss_func=opt.loss, loss_network=opt.loss_network, network=opt.network_name)
     elif opt.mode == 'finetune_maml':
-        finetuneMaml(train_path=opt.train_folder, valid_path=opt.valid_folder, batch_size=opt.batch_size, epoch_nb=opt.epoch_nb, learning_rate=opt.learning_rate, meta_learning_rate=opt.meta_learning_rate, load_weights=opt.load_weights, save_weights=opt.save_weights, network=opt.network_name)
+        finetuneMaml(train_path=opt.train_folder, valid_path=opt.valid_folder, batch_size=opt.batch_size, epoch_nb=opt.epoch_nb, learning_rate=opt.learning_rate, meta_learning_rate=opt.meta_learning_rate, load_weights=opt.load_weights, save_weights=opt.save_weights, finetune_depth=opt.finetune_depth, network=opt.network_name)
     elif opt.mode == 'meta_upscale':
         MAMLupscale(in_path=opt.input, out_path=opt.output, weights_path=opt.load_weights, learning_rate=opt.learning_rate, batch_size=opt.batch_size, verbose=opt.verbose, device_name=opt.device, network=opt.network_name)
     elif opt.mode == 'evaluation':
