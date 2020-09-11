@@ -2,13 +2,13 @@ from argparse import ArgumentParser
 import os
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
-from FSSR import meta_train, finetuneMaml, MAMLupscale, model_train
+from FSSR import meta_train, finetuneMaml, MAMLupscale, model_train, upscale
 from evaluation import evaluation
 
 ## Parser
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('--mode', default='meta_train', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train'])
+    parser.add_argument('--mode', default='meta_train', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'])
     parser.add_argument('--device', default='cuda_if_available', choices=['cpu', 'cuda', 'cuda_if_available'], help="Leave default to use the GPU if it is available. CPU can't be used for training without changing the code.")
     parser.add_argument('--input', default='../dataset/FSSR/DIV2K/DIV2K_valid_HR/', help="Path to the directory containing the images to upscale. Only used for upscaling or evaluation.")
     parser.add_argument('--output', default='./out/', help="Destination directory for the benchmark in 'evaluation' mode or upscaled images in 'upscale' mode.")
@@ -40,6 +40,7 @@ if __name__ == "__main__":
         pass
     elif opt.mode == 'model_train':
         model_train(train_path=opt.train_folder, valid_path=opt.valid_folder, epoch_nb=opt.epoch_nb, batch_size=opt.batch_size, load_weights=opt.load_weights, save_weights=opt.save_weights)
-
+    elif opt.mode == 'upscale':
+        upscale(load_weights=opt.load_weights, input=opt.input, out=opt.output)
     else:
         raise Exception("Invalid mode. Run this command if you need help: $ python run.py --help")

@@ -18,6 +18,9 @@ from loss_functions import perceptionLoss, ultimateLoss
 from finetuner import FineTuner
 warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
+# Use GPU if available
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 ## Training
 def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
 
@@ -93,8 +96,6 @@ def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta
         return
 
     ## Init training
-    # Use GPU if available
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     scale_factor = 2
 
@@ -147,15 +148,14 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
         device = torch.device("cuda:0")
 
     if network == 'EDSR':
-        autoencoder = EDSR()
+        model = EDSR()
 
-    config = autoencoder.getconfig()
+    config = model.getconfig()
 
     meta_learner = Meta(config, learning_rate, 0, 10, 10) # Meta learning rate = 0 so no update is performed at test time. Anyway, it doesn't matter which value is given here because it won't be used at test time.
     meta_learner.load_state_dict(torch.load(weights_path))
-    #meta_learner.eval() # useful uhu?
 
-    del autoencoder
+    del model
 
     scale_factor = 2
     transform = transforms.ToTensor()
@@ -183,6 +183,10 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
         img = transforms.Compose([torchvision.transforms.ToPILImage(mode='RGB')])(reconstructed[0].cpu())
         img_l = transforms.ToPILImage(mode='RGB')(query_label.cpu())
         img_without = transforms.ToPILImage(mode='RGB')(reconstructed_without[0].cpu())
+        if not(os.path.exists(os.path.join(out_path, 'without/'))):
+            os.mkdir(os.path.join(out_path, 'without/'))
+        if not(os.path.exists(os.path.join(out_path, 'labels/'))):
+            os.mkdir(os.path.join(out_path, 'labels/'))
         img_without.save(os.path.join(os.path.join(out_path, 'without/'), str(i) + '.png'))
         img_l.save(os.path.join(os.path.join(out_path, 'labels/'), str(i) + '.png'))
         img.save(os.path.join(out_path, str(i) + ".png"))
@@ -200,12 +204,8 @@ def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verb
 
 
 def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, load_weights, save_weights, finetune_depth, network='EDSR'):
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     if network == 'EDSR':
         model = EDSR().to(device)
-    for name, param in model.named_parameters():
-        print(name)
-        print(param)
     config = model.getconfig()
     # Data loading
     transform = transforms.ToTensor()
@@ -229,7 +229,6 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
     return
 
 def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=None, save_weights='weights.pt', model_name='EDSR'):
-    device = torch.device('cuda:0')
     verbose = True
     if model_name == 'EDSR':
         super_res_model = EDSR().to(device)
@@ -323,3 +322,27 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
     makeCheckpoint(super_res_model, save_weights)
 
     return
+
+def upscale(load_weights, input, out):
+    edsr = EDSR().to(device)
+    if load_weights is not None:
+        edsr.load_state_dict(torch.load(load_weights))
+        print("Loaded weights from: " + str(load_weights), flush=True)
+    label_path = os.path.join(out, 'labels/')
+    if not(os.path.exists(label_path)):
+        os.mkdir(label_path)
+
+    batch_size = 1
+    validset = utils.FSDataset(input, transform=transforms.ToTensor())
+    validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=False, num_workers=2)
+    with torch.no_grad():
+        for i, data in enumerate(validloader):
+            query, label = data[2].to(device), data[3].to(device)
+            query = edsr(query)
+            query = transforms.ToPILImage(mode='RGB')(query.squeeze(0).cpu())
+            query.save(os.path.join(out, str(i) + '.png'))
+            label = transforms.ToPILImage(mode='RGB')(label.squeeze(0).cpu())
+            label.save(os.path.join(label_path, str(i) + '.png'))
+    return
+
+
