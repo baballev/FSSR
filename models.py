@@ -4,6 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
+## CODE ADAPTED FROM: https://github.com/sunwj/CAR
+## All credits go to sunwj.
+
 ### Blocks
 class ResBlock(nn.Module): # From EDSR paper. BatchNorm removed because not useful for SR tasks and it saves memory.
 
@@ -93,7 +96,6 @@ class MeanShift(nn.Conv2d): # ToDo: faire des stats sur le dataset pour + accura
             p.requires_grad = False
 
 
-
 ### Models
 ## EDSR:
 # Code adapted from the pytorch implementation of CAR: https://github.com/sunwj/CAR/
@@ -161,12 +163,3 @@ class EDSR(nn.Module):
     def getconfig(self):
         return self.config
 
-
-## CAR
-class CAR(nn.Module):
-    def __init__(self):
-        super(CAR, self).__init__()
-        # ToDo
-
-    def forward(self, x):
-        return x
