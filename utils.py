@@ -7,7 +7,7 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
-import Augmentor  # Data augmentation library
+#import Augmentor  # Data augmentation library
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
