@@ -1,6 +1,8 @@
 import os
-from skimage.metrics import structural_similarity as ssim
+#from skimage.metrics import structural_similarity as ssim
 import cv2
+
+import tensorfow.image.ssim as ssim
 
 # Compute SSIM on the Y channel of YCbCr
 
