@@ -18,7 +18,7 @@ def evaluation(in_path, out_path, verbose):
     # Upscale
 
     label_path = os.path.join(in_path, 'labels/')
-    #in_path = os.path.join(in_path, 'without/')
+    in_path = os.path.join(in_path, 'without/')
 
     # Compute metrics
     if verbose:
