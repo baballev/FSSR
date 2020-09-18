@@ -129,15 +129,8 @@ def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta
 
     del autoencoder
 
-    if loss_func == "MSE": # Get the appropriate loss function.
-        loss_function = nn.MSELoss()
-    elif loss_func == "perception":
-        loss_function = perceptionLoss(pretrained_model=loss_network) # ToDo: Embed this code in the meta learner constructor so as to be able to choose which loss function is used by MAML
-    elif loss_func == "ultimate":
-        loss_function = ultimateLoss(pretrained_model=loss_network)
-
     # Start training
-    meta_learner = MAMLtrain(meta_learner, epoch_nb, trainloader, validloader, batch_size=batch_size)
+    meta_learner = MAMLtrain(meta_learner, epoch_nb, trainloader, validloader, batch_size=batch_size, loss_func=loss_func)
     makeCheckpoint(meta_learner, save_path)
     return
 
