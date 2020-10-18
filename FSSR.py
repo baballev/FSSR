@@ -60,6 +60,7 @@ def MAMLtrain(model, epochs_nb, trainloader, validloader, batch_size=1, verbose=
             print(" ", flush=True)
             print("****************")
             print('Training Loss: {:.7f}'.format(epoch_loss), flush=True)
+
         # Validation
         running_loss = 0.0
         verbose_loss = 0.0
@@ -79,6 +80,7 @@ def MAMLtrain(model, epochs_nb, trainloader, validloader, batch_size=1, verbose=
         if epoch_loss < best_loss:
             best_loss = epoch_loss
             best_model = copy.deepcopy(model.state_dict())
+
     # Verbose 4
     if verbose:
         time_elapsed = time.time() - since
@@ -130,7 +132,7 @@ def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta
     del autoencoder
 
     # Start training
-    meta_learner = MAMLtrain(meta_learner, epoch_nb, trainloader, validloader, batch_size=batch_size, loss_func=loss_func)
+    meta_learner = MAMLtrain(meta_learner, epoch_nb, trainloader, validloader, batch_size=batch_size)#, loss_func=loss_func)
     makeCheckpoint(meta_learner, save_path)
     return
 

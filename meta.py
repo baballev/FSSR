@@ -315,7 +315,6 @@ class Meta(nn.Module):
         for i in range(task_num):
 
             # 1. run the i-th task and compute loss for k=0
-                    print(grid)
             reconstructed = self.net(x_spt[i], vars=None, bn_training=True)
             loss = self.loss_func(reconstructed, y_spt[i]) # ToDo: Make the loss function customizable.
             grad = torch.autograd.grad(loss, self.net.parameters())
