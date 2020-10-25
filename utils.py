@@ -1,31 +1,43 @@
 import imghdr
 import os
 from PIL import Image
-import os
 import torch
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
-#import Augmentor  # Data augmentation library
+# print(os.path.realpath(__file__))
+# print(os.path.dirname(os.path.realpath(__file__)), flush=True)
+# os.chdir(os.path.dirname(os.path.realpath(__file__)))
+# print(os.getcwd(), flush=True)
 
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
+def show_image(image, title='', keep_alive=True):
+  plt.figure()
+  plt.imshow(image.permute(1,2,0) if torch.is_tensor(image) else image)
+  plt.title(title)
+  if keep_alive:
+      return plt.show()
+  plt.draw()
+  plt.pause(2)
+  plt.close()
 
+# def show_image(input_tensor, n=0):
+#     y = input_tensor.detach()[n].cpu().numpy().transpose((1, 2, 0))
+#     plt.imshow(y)
+#     plt.pause(1)
 
-## Utils
-def show_image(input_tensor, n=0):
-    y = input_tensor.detach()[n].cpu().numpy().transpose((1, 2, 0))
-    plt.imshow(y)
-    plt.pause(1)
+def is_image(path):
+    # Checks the first bytes of the file to see if it's a valid png/jpeg
+    return (imghdr.what(path) == 'jpeg' or imghdr.what(path) == 'png')
 
+def list_directory_files(path, policy):
+    return [os.path.join(path, f) for f in os.listdir(path) if policy(os.path.join(path, f))]
 
-def is_file_not_corrupted(path):
-    return (imghdr.what(path) == 'jpeg' or imghdr.what(
-        path) == 'png')  # Checks the first bytes of the file to see if it's a valid png/jpeg
-
+def list_images(path):
+    return list_directory_files(path, is_image)
 
 class DADataset(torch.utils.data.Dataset):  # Making artificial tasks with Data Augmentation. It's very bad if used for validation because it means the validation set is changing at every epoch -> Refrain from using this for validation.
-    def __init__(self, images_directory, num_shot, transform, is_valid_file=is_file_not_corrupted, scale_factor=2,
+    def __init__(self, images_directory, num_shot, transform, is_valid_file=is_image, scale_factor=2,
                  memory_fit_factor=4, mode='train'):
         self.is_valid_file = is_valid_file
         self.image_paths = [os.path.join(images_directory, f) for f in os.listdir(images_directory) if
@@ -99,7 +111,7 @@ class FSDataset(torch.utils.data.Dataset):
     In this setup, it is a N-1 shot (1 way) super-resolution task.
     '''
 
-    def __init__(self, classes_folder_path, transform, is_valid_file=is_file_not_corrupted, scale_factor=2, mode='train'):
+    def __init__(self, classes_folder_path, transform, is_valid_file=is_image, scale_factor=2, mode='train'):
         self.is_valid_file = is_valid_file
         self.class_paths = [os.path.join(classes_folder_path, f) for f in os.listdir(classes_folder_path) if os.path.isdir(os.path.join(classes_folder_path, f)) and len(os.listdir(os.path.join(classes_folder_path, f))) > 2]
         self.length = len(self.class_paths)
@@ -107,7 +119,7 @@ class FSDataset(torch.utils.data.Dataset):
         self.mode = mode
         self.scale_factor = scale_factor
 
-    def __getitem__(self, index):  # ToDO: Implement the method.
+    def __getitem__(self, index):
         transform = transforms.ToTensor()
         folder = self.class_paths[index]
         files = [os.path.join(folder, f) for f in os.listdir(folder)]
@@ -132,6 +144,7 @@ class FSDataset(torch.utils.data.Dataset):
             resize_width -= (resize_width % self.scale_factor)
         query_l = transform(img)
         query = transform(transforms.Resize((resize_height//self.scale_factor, resize_width//self.scale_factor), interpolation=Image.BICUBIC)(img))
+
         if self.mode == 'train':
             return support, support_l, query, query_l
         elif self.mode == 'up':

@@ -16,7 +16,10 @@ from meta import Meta
 import utils
 from loss_functions import perceptionLoss, ultimateLoss
 from finetuner import FineTuner
-warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
+
+from datasets.BasicDataset import BasicDataset
+
+# warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
 # Use GPU if available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -41,9 +44,9 @@ def MAMLtrain(model, epochs_nb, trainloader, validloader, batch_size=1, verbose=
         verbose_loss = 0.0
         for i, data in enumerate(trainloader):
             support_data, support_label, query_data, query_label = data[0].to(device), data[1].to(device), data[2].to(
-                device), data[3].to(device)
+                device), data[3].to(device) # data [ d.to(device) for d in data]
             loss = model(support_data, support_label, query_data, query_label)
-            print(loss)
+            print('loss:', loss)
 
             if i % 20 == 0:
                 print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
@@ -66,7 +69,7 @@ def MAMLtrain(model, epochs_nb, trainloader, validloader, batch_size=1, verbose=
         verbose_loss = 0.0
         for i, data in enumerate(validloader):
             support_data, support_label, query_data, query_label = data[0].to(device).squeeze(0), data[1].to(
-                device).squeeze(0), data[2].to(device), data[3].to(device)
+                device).squeeze(0), data[2].to(device), data[3].to(device) # same
             loss = model.finetuning(support_data, support_label, query_data, query_label)
 
             running_loss += loss
@@ -227,13 +230,16 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
 
     return
 
-def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=None, save_weights='weights.pt', model_name='EDSR'):
-    verbose = True
+def model_train(train_path, valid_path,                             # data
+                load_weights=None, model_name='EDSR',               # model
+                epoch_nb=1, learning_rate=0.0001, batch_size=16,    # hyper-params
+                save_weights='weights.pt', verbose=True):           # run setting
+
     if model_name == 'EDSR':
-        super_res_model = EDSR().to(device)
+        model = EDSR().to(device)
 
     if load_weights is not None:
-        super_res_model.load_state_dict(torch.load(load_weights))
+        model.load_state_dict(torch.load(load_weights))
         print("Loaded weights from: " + str(load_weights), flush=True)
 
     def train(model, epochs_nb, trainloader, validloader, optimizer):
@@ -254,7 +260,8 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
             running_loss = 0.0
             verbose_loss = 0.0
             for i, data in enumerate(trainloader):
-                query, label = data[2].to(device), data[3].to(device)
+                print(data, flush=True)
+                query, label = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
                 query = model(query)
                 loss = F.mse_loss(query, label)
@@ -277,12 +284,13 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
                 print(" ", flush=True)
                 print("****************")
                 print('Training Loss: {:.7f}'.format(epoch_loss), flush=True)
+
             # Validation
             running_loss = 0.0
             verbose_loss = 0.0
             with torch.no_grad():
                 for i, data in enumerate(validloader):
-                    query, label =  data[2].to(device), data[3].to(device)
+                    query, label =  data[0].to(device), data[1].to(device)
                     query = model(query)
                     loss = F.mse_loss(query, label)
                     running_loss += loss.item()
@@ -296,6 +304,7 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
             if epoch_loss < best_loss:
                 best_loss = epoch_loss
                 best_model = copy.deepcopy(model.state_dict())
+
         # Verbose 4
         if verbose:
             time_elapsed = time.time() - since
@@ -305,20 +314,17 @@ def model_train(train_path, valid_path, epoch_nb=1, batch_size=1, load_weights=N
         model.load_state_dict(best_model) # In place anyway
         return model # Returning just in case
 
-    def makeCheckpoint(model, save_path): # Function to save weights
-        torch.save(model.state_dict(), save_path)
-        if verbose:
-            print("Weights saved to: " + save_path, flush=True)
-        return
-
-    trainset = utils.DADataset(train_path, num_shot=1, transform=transforms.ToTensor())
+    # trainset = utils.DADataset(train_path, num_shot=1, transform=transforms.ToTensor())
+    trainset = BasicDataset(train_path)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
-    validset = utils.FSDataset(valid_path, transform=transforms.ToTensor())
+
+    # validset = utils.FSDataset(valid_path, transform=transforms.ToTensor())
+    validset = BasicDataset(valid_path)
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
 
-    optimizer = optim.Adam(super_res_model.parameters(), lr=0.0001, amsgrad=True)
-    super_res_model = train(super_res_model, epoch_nb, trainloader, validloader, optimizer)
-    makeCheckpoint(super_res_model, save_weights)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
+    model = train(model, epoch_nb, trainloader, validloader, optimizer)
+    makeCheckpoint(model, save_weights)
 
     return
 

@@ -1,9 +1,10 @@
-/__pycache__
 /papers
-/benchmark/__pycache__
 /benchmark/results
 /benchmark/sample
 /benchmark/tmp
 /weights
 /out
 /.idea
+
+**/__pycache__
+.ipynb_checkpoints
