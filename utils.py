@@ -4,22 +4,22 @@ from PIL import Image
 import torch
 import torchvision
 import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # print(os.path.realpath(__file__))
 # print(os.path.dirname(os.path.realpath(__file__)), flush=True)
 # os.chdir(os.path.dirname(os.path.realpath(__file__)))
 # print(os.getcwd(), flush=True)
 
-def show_image(image, title='', keep_alive=True):
-  plt.figure()
-  plt.imshow(image.permute(1,2,0) if torch.is_tensor(image) else image)
-  plt.title(title)
-  if keep_alive:
-      return plt.show()
-  plt.draw()
-  plt.pause(2)
-  plt.close()
+# def show_image(image, title='', keep_alive=True):
+#   plt.figure()
+#   plt.imshow(image.permute(1,2,0) if torch.is_tensor(image) else image)
+#   plt.title(title)
+#   if keep_alive:
+#       return plt.show()
+#   plt.draw()
+#   plt.pause(2)
+#   plt.close()
 
 # def show_image(input_tensor, n=0):
 #     y = input_tensor.detach()[n].cpu().numpy().transpose((1, 2, 0))

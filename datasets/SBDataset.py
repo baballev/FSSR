@@ -2,7 +2,6 @@ import os
 import torch
 import torchvision
 import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
 from PIL import Image
 from utils import is_file_not_corrupted
 

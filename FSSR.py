@@ -19,7 +19,7 @@ from finetuner import FineTuner
 
 from datasets.BasicDataset import BasicDataset
 
-# warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
+warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
 # Use GPU if available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -251,6 +251,7 @@ def model_train(train_path, valid_path,                             # data
         print("Training start", flush=True)
 
         for epoch in range(epochs_nb):
+
             # Verbose 1
             if verbose:
                 print("Epoch [" + str(epoch+1) + " / " + str(epochs_nb) + "]", flush=True)
@@ -260,14 +261,13 @@ def model_train(train_path, valid_path,                             # data
             running_loss = 0.0
             verbose_loss = 0.0
             for i, data in enumerate(trainloader):
-                print(data, flush=True)
                 query, label = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
                 query = model(query)
                 loss = F.mse_loss(query, label)
                 loss.backward()
                 optimizer.step()
-                print(loss.item())
+                # print(loss.item())
 
                 if i%100 == 0:
                     print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
