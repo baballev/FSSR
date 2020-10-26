@@ -47,7 +47,9 @@ class BasicDataset(torch.utils.data.Dataset):
     to_tensor = [T.ToTensor()]
 
     image = augmentation(original) if self.training else original
-    return T.Compose(resize + to_tensor)(image), T.Compose(to_tensor)(image)
+    query, label = T.Compose(resize + to_tensor)(image), T.Compose(to_tensor)(image)
+    print(query.shape, label.shape)
+    return query, label
 
   def __len__(self):
     return len(self.image_paths)
