@@ -329,22 +329,28 @@ def model_train(train_path, valid_path,                             # data
     return
 
 def upscale(load_weights, input, out):
+
     edsr = EDSR().to(device)
     print(edsr)
-
     if load_weights is not None:
         edsr.load_state_dict(torch.load(load_weights))
         print("Loaded weights from: " + str(load_weights), flush=True)
+
     label_path = os.path.join(out, 'labels/')
     if not(os.path.exists(label_path)):
         os.mkdir(label_path)
 
-    batch_size = 1
-    validset = utils.FSDataset(input, transform=transforms.ToTensor())
-    validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=False, num_workers=2)
+    # validset = utils.FSDataset(input, transform=transforms.ToTensor())
+    validset = BasicDataset(input)
+    print(validset.__len__(), flush=True)
+    print(out, flush=True)
+
+    validloader = torch.utils.data.DataLoader(validset, batch_size=1, shuffle=False, num_workers=2)
+
     with torch.no_grad():
         for i, data in enumerate(validloader):
-            query, label = data[2].to(device), data[3].to(device)
+            print(i)
+            query, label = data[0].to(device), data[1].to(device)
             query = edsr(query)
             query = transforms.ToPILImage(mode='RGB')(query.squeeze(0).cpu())
             query.save(os.path.join(out, str(i) + '.png'))

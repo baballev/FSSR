@@ -13,10 +13,12 @@ if __name__ == "__main__":
         help="Run mode to launch.")
     parser.add_argument('--device', default='cuda_if_available', choices=['cpu', 'cuda', 'cuda_if_available'],
         help="Leave default to use the GPU if it is available. CPU can't be used for training without changing the code.")
-    parser.add_argument('--input', default='../../../../mnt/data/prim_project/dataset/FSSR/DIV2K/DIV2K_valid_HR/',
+
+    parser.add_argument('--input', default='../CelebA/', # '../../../../mnt/data/prim_project/dataset/FSSR/CelebA/'
         help="Path to the directory containing the images to upscale. Only used for upscaling or evaluation.")
     parser.add_argument('--output', default='./out/',
         help="Destination directory for the benchmark in 'evaluation' mode or upscaled images in 'upscale' mode.")
+
     parser.add_argument('--verbose', default=True, type=bool, choices=[True, False],
         help="Whether the script print info in stdout.")
     parser.add_argument('--network_name',  default='EDSR', choices=['EDSR'],
@@ -101,6 +103,7 @@ if __name__ == "__main__":
                     save_weights=opt.save_weights)
 
     elif opt.mode == 'upscale':
+        # assert()
         upscale(load_weights=opt.load_weights, input=opt.input, out=opt.output)
 
     else:
