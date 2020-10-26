@@ -3,7 +3,7 @@ import os
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 from FSSR import meta_train, finetuneMaml, MAMLupscale, model_train, upscale
-#from evaluation import evaluation
+from evaluation import evaluation
 
 ## Parser
 if __name__ == "__main__":
