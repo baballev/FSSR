@@ -351,15 +351,16 @@ def upscale(load_weights, input, out):
     with torch.no_grad():
         for i, data in enumerate(validloader):
             query, label = data[0].to(device), data[1].to(device)
-            ouput = edsr(query)
-            print('upscaling [', round(i/image_count*100, 2), '%]', name)
+            output = edsr(query)
 
-            name = validloader.get_image_name(i)
-            output = transforms.ToPILImage(mode='RGB')(query.squeeze(0).cpu())
-            output.save(os.path.join(constructed_path, name))
+            # name = validloader.get_image_name(i)
+            print('upscaling [', round(i/image_count*100, 2), '%]', i)
+
+            output = transforms.ToPILImage(mode='RGB')(output.squeeze(0).cpu())
+            output.save(os.path.join(constructed_path, str(i) + '.png'))
 
             label = transforms.ToPILImage(mode='RGB')(label.squeeze(0).cpu())
-            label.save(os.path.join(label_path, name))
+            label.save(os.path.join(label_path, str(i) + '.png'))
     return
 
 

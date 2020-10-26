@@ -31,7 +31,7 @@ def is_image(path):
     return (imghdr.what(path) == 'jpeg' or imghdr.what(path) == 'png')
 
 def list_directory_files(path, policy):
-    return [os.path.join(path, f) for f in os.listdir(path) if policy(os.path.join(path, f))]
+    return [os.path.join(path, f) for f in sorted(os.listdir(path)) if policy(os.path.join(path, f))]
 
 def list_images(path):
     return list_directory_files(path, is_image)
