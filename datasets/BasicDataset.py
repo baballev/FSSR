@@ -51,3 +51,6 @@ class BasicDataset(torch.utils.data.Dataset):
 
   def __len__(self):
     return len(self.image_paths)
+
+  def get_image_name(self, index):
+    return self.image_paths[index]

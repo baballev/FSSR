@@ -340,20 +340,26 @@ def upscale(load_weights, input, out):
     if not(os.path.exists(label_path)):
         os.mkdir(label_path)
 
+    constructed_path = os.path.join(out, 'constructed/')
+    if not(os.path.exists(constructed_path)):
+        os.mkdir(constructed_path)
+
     validset = BasicDataset(input, training=False)
     validloader = torch.utils.data.DataLoader(validset, batch_size=1, shuffle=False, num_workers=2)
 
     image_count = len(validloader)
     with torch.no_grad():
         for i, data in enumerate(validloader):
-            print('upscaling', round(i/image_count*100, 2), '% done')
-
             query, label = data[0].to(device), data[1].to(device)
             ouput = edsr(query)
+            print('upscaling [', round(i/image_count*100, 2), '%]', name)
+
+            name = validloader.get_image_name(i)
             output = transforms.ToPILImage(mode='RGB')(query.squeeze(0).cpu())
-            output.save(os.path.join(out, str(i) + '.png'))
+            output.save(os.path.join(constructed_path, name))
+
             label = transforms.ToPILImage(mode='RGB')(label.squeeze(0).cpu())
-            label.save(os.path.join(label_path, str(i) + '.png'))
+            label.save(os.path.join(label_path, name))
     return
 
 
