@@ -20,13 +20,13 @@ def evaluation(in_path, out_path, verbose):
     constructed_path = os.path.join(in_path, 'constructed/')
 
     # Compute metrics
-    print("Computing PSNR (Y channel)", flush=True) if verbose
+    print("Computing PSNR (Y channel)", flush=True) if verbose else 0
     mean_PSNRY, n2 = meanPSNR(label_path, constructed_path, color_mode='Y', verbose=verbose)
 
-    print("Computing PSNR (RGB channels)", flush=True) if verbose
+    print("Computing PSNR (RGB channels)", flush=True) if verbose else 0
     mean_PSNRRGB, _ = meanPSNR(label_path, constructed_path, color_mode='RGB', verbose=verbose)
 
-    print("Computing PSNR (YCbCr channels)", flush=True) if verbose:
+    print("Computing PSNR (YCbCr channels)", flush=True) if verbose else 0
     mean_PSNRYCbCr, _ = meanPSNR(label_path, constructed_path, color_mode='YCbCr', verbose=verbose)
 
     # print("Computing SSIM", flush=True) if verbose
