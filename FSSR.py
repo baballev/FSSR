@@ -341,7 +341,7 @@ def upscale(load_weights, input, out):
         os.mkdir(label_path)
 
     # validset = utils.FSDataset(input, transform=transforms.ToTensor())
-    validset = BasicDataset(input)
+    validset = BasicDataset(input, training=False)
     print(validset.__len__(), flush=True)
     print(out, flush=True)
 
