@@ -232,7 +232,7 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
 
 def model_train(train_path, valid_path,                             # data
                 load_weights=None, model_name='EDSR',               # model
-                epoch_nb=1, learning_rate=0.0001, batch_size=16,    # hyper-params
+                epoch_nb=10, learning_rate=0.0001, batch_size=16,   # hyper-params
                 save_weights='weights.pt', verbose=True):           # run setting
 
     if model_name == 'EDSR':
@@ -329,9 +329,9 @@ def model_train(train_path, valid_path,                             # data
     return
 
 def upscale(load_weights, input, out):
-
     edsr = EDSR().to(device)
     print(edsr)
+
     if load_weights is not None:
         edsr.load_state_dict(torch.load(load_weights))
         print("Loaded weights from: " + str(load_weights), flush=True)
@@ -340,20 +340,18 @@ def upscale(load_weights, input, out):
     if not(os.path.exists(label_path)):
         os.mkdir(label_path)
 
-    # validset = utils.FSDataset(input, transform=transforms.ToTensor())
     validset = BasicDataset(input, training=False)
-    print(validset.__len__(), flush=True)
-    print(out, flush=True)
-
     validloader = torch.utils.data.DataLoader(validset, batch_size=1, shuffle=False, num_workers=2)
 
+    image_count = len(validloader)
     with torch.no_grad():
         for i, data in enumerate(validloader):
-            print(i)
+            print('upscaling', round(i/image_count*100, 2), '% done')
+
             query, label = data[0].to(device), data[1].to(device)
-            query = edsr(query)
-            query = transforms.ToPILImage(mode='RGB')(query.squeeze(0).cpu())
-            query.save(os.path.join(out, str(i) + '.png'))
+            ouput = edsr(query)
+            output = transforms.ToPILImage(mode='RGB')(query.squeeze(0).cpu())
+            output.save(os.path.join(out, str(i) + '.png'))
             label = transforms.ToPILImage(mode='RGB')(label.squeeze(0).cpu())
             label.save(os.path.join(label_path, str(i) + '.png'))
     return

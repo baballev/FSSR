@@ -19,11 +19,15 @@ class BasicDataset(torch.utils.data.Dataset):
     original = Image.open(self.image_paths[index]).convert('RGB')
     width, height = original.width, original.height
 
-    resize_height = height // self.memory_factor
-    resize_width = width // self.memory_factor
-    while resize_height * resize_width > 393 * 510:  # avoid too big tensors
-      resize_height -= self.memory_factor
-      resize_width -= int(self.memory_factor * (width / height))
+    if training:
+      resize_height = height // self.memory_factor
+      resize_width = width // self.memory_factor
+      while resize_height * resize_width > 393 * 510:  # avoid too big tensors
+        resize_height -= self.memory_factor
+        resize_width -= int(self.memory_factor * (width / height))
+    else
+      resize_height = height
+      resize_width = width
 
     resize_height -= resize_height % self.scale_factor
     resize_width -= resize_width % self.scale_factor

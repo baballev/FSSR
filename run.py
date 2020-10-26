@@ -88,8 +88,7 @@ if __name__ == "__main__":
                     network=opt.network_name)
 
     elif opt.mode == 'evaluation':
-        # evaluation(in_path=opt.input, out_path=opt.output, verbose=True)
-        pass
+        evaluation(in_path=opt.input, out_path=opt.output, verbose=True)
 
     elif opt.mode == 'upscale_video':
         pass
