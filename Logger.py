@@ -12,9 +12,10 @@ class Logger(object):
     def __init__(self, filename, verbose=True):
         self.terminal = sys.stdout
         self.logfile = open(filename, 'a')
+        self.verbose = verbose
 
     def write(self, message):
-        if verbose:
+        if self.verbose:
             self.terminal.write(message)
         self.logfile.write(message)
 
