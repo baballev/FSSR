@@ -102,7 +102,7 @@ if __name__ == "__main__":
                     batch_size=opt.batch_size,
                     load_weights=opt.load_weights,
                     save_weights=opt.save_weights,
-                    name=opt.op_name)
+                    name=opt.operation_name)
 
     elif opt.mode == 'upscale':
         # assert()
