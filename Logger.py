@@ -21,8 +21,8 @@ class Logger(object):
     def flush(self):
         pass
 
-def start(filename):
-    sys.stdout = Logger(filename)
+def start(filename, verbose):
+    sys.stdout = Logger(filename, verbose)
 
 def stop():
     sys.stdout.logfile.close()
