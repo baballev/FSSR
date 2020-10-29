@@ -18,6 +18,7 @@ from loss_functions import perceptionLoss, ultimateLoss
 from finetuner import FineTuner
 
 from datasets.BasicDataset import BasicDataset
+import Logger
 
 warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
@@ -233,7 +234,12 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
 def model_train(train_path, valid_path,                             # data
                 load_weights=None, model_name='EDSR',               # model
                 epoch_nb=10, learning_rate=0.0001, batch_size=16,   # hyper-params
-                save_weights='weights.pt', verbose=True):           # run setting
+                name='', save_weights='weights.pt', verbose=True):  # run setting
+
+    if not name:
+        name = 'vanilla-train_%s-%ie' % (model_name, epoch_nb)
+
+    Logger.start('%s.log' % name, verbose)
 
     if model_name == 'EDSR':
         model = EDSR().to(device)
@@ -314,17 +320,16 @@ def model_train(train_path, valid_path,                             # data
         model.load_state_dict(best_model) # In place anyway
         return model # Returning just in case
 
-    # trainset = utils.DADataset(train_path, num_shot=1, transform=transforms.ToTensor())
     trainset = BasicDataset(train_path)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    # validset = utils.FSDataset(valid_path, transform=transforms.ToTensor())
     validset = BasicDataset(valid_path)
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
     model = train(model, epoch_nb, trainloader, validloader, optimizer)
     makeCheckpoint(model, save_weights)
+    Logger.stop()
 
     return
 

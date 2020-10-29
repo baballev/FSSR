@@ -11,6 +11,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--mode', default='meta_train', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'],
         help="Run mode to launch.")
+    parser.add_argument('--operation_name', default='',
+        help="Name of the operation that is run")
     parser.add_argument('--device', default='cuda_if_available', choices=['cpu', 'cuda', 'cuda_if_available'],
         help="Leave default to use the GPU if it is available. CPU can't be used for training without changing the code.")
 
@@ -99,7 +101,8 @@ if __name__ == "__main__":
                     epoch_nb=opt.epoch_nb,
                     batch_size=opt.batch_size,
                     load_weights=opt.load_weights,
-                    save_weights=opt.save_weights)
+                    save_weights=opt.save_weights,
+                    name=opt.op_name)
 
     elif opt.mode == 'upscale':
         # assert()
