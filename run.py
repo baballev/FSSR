@@ -96,6 +96,8 @@ if __name__ == "__main__":
         pass
 
     elif opt.mode == 'model_train':
+        print('train path: %s' % opt.train_folder)
+        print('validation path: %s' % opt.valid_folder)
         model_train(train_path=opt.train_folder,
                     valid_path=opt.valid_folder,
                     epoch_nb=opt.epoch_nb,
