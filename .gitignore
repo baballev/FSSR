@@ -5,6 +5,7 @@
 /weights
 /out
 /.idea
+local
 
 **/__pycache__
 .ipynb_checkpoints
