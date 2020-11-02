@@ -23,6 +23,7 @@ import Logger
 warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
 # Use GPU if available
+print('is cuda available?', torch.cuda.is_available())
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 ## General purpose functions
