@@ -271,7 +271,6 @@ def model_train(train_path, valid_path,                             # data
                 query, label = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
                 query = model(query)
-                print('shape of output', query.shape)
                 loss = F.mse_loss(query, label)
                 loss.backward()
                 optimizer.step()
