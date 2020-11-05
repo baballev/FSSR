@@ -9,11 +9,12 @@ class BasicDataset(torch.utils.data.Dataset):
   """
   Single image dataset fetcher
   """
-  def __init__(self, images_directory, scale_factor=2, memory_fit_factor=4, training=True):
+  def __init__(self, images_directory, scale_factor=2, memory_fit_factor=4, training=True, resize=None):
     self.image_paths = list_images(images_directory)
     self.training = training
     self.scale_factor = scale_factor
     self.memory_factor = memory_fit_factor
+    self.resize = resize
 
   def __getitem__(self, index):
     original = Image.open(self.image_paths[index]).convert('RGB')
@@ -33,7 +34,6 @@ class BasicDataset(torch.utils.data.Dataset):
     resize_width -= resize_width % self.scale_factor
 
     resize_dimensions = (resize_height, resize_width)
-    resize_factors = (resize_height // self.scale_factor, resize_width // self.scale_factor)
 
     augmentation = T.Compose([
       T.RandomPerspective(),
@@ -43,6 +43,13 @@ class BasicDataset(torch.utils.data.Dataset):
       T.RandomVerticalFlip(0.3)
     ])
 
+    resize_factors = (resize_height // self.scale_factor, resize_width // self.scale_factor)
+
+    if self.resize is not None: # force resize
+      resize_factors = self.resize
+
+    # print('original size (%i,%i)' % (width, height))
+    # print('size (%i,%i)' % (resize_factors[0],resize_factors[1]))
     resize = [T.Resize(resize_factors, interpolation=Image.BICUBIC)]
     to_tensor = [T.ToTensor()]
 

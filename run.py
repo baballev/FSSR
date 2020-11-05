@@ -100,7 +100,7 @@ if __name__ == "__main__":
         print('validation path: %s' % opt.valid_folder)
         print('nb of epochs: %i' % opt.epoch_nb)
         print('batch size: %i' % opt.batch_size)
-        print('loading weights %i', (bool(opt.load_weights), opt.load_weights if opt.load_weights else '' ))
+        print('loading weights %i %s', (bool(opt.load_weights), opt.load_weights if opt.load_weights else '' ))
 
         model_train(train_path=opt.train_folder,
                     valid_path=opt.valid_folder,
