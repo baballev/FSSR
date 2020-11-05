@@ -61,7 +61,7 @@ class BasicDataset(torch.utils.data.Dataset):
         to_tensor = [T.ToTensor()]
 
         image = augmentation(original) if self.training else original
-        return T.Compose(resize + to_tensor)(image), T.Compose(resize_and_scale + to_tensor)(image)
+        return T.Compose(resize_and_scale + to_tensor)(image), T.Compose(resize + to_tensor)(image)
 
     def __len__(self):
         return len(self.image_paths)
