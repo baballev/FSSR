@@ -238,12 +238,12 @@ def model_train(train_path, valid_path,                             # data
                 name='', save_weights='weights.pt', verbose=True):  # run setting
 
     if not name:
-        name = 'vanilla-train_%s-%ie' % (model_name, epoch_nb)
+        name = '%s_vanilla-%s_%ie-b%i' % (model_name, 'finetuning' if load_weights else 'training', epoch_nb, batch_size)
 
     Logger.start('%s.log' % name, verbose)
 
     if model_name == 'EDSR':
-        model = EDSR().to(device)
+        model = EDSR(scale=4).to(device)
 
     if load_weights is not None:
         model.load_state_dict(torch.load(load_weights))
