@@ -324,10 +324,10 @@ def model_train(train_path, valid_path,                             # data
         return model # Returning just in case
 
     resize = (256, 512) # force resize since we are working with batch_size > 1
-    trainset = BasicDataset(train_path, resize=resize, scale_factor=4)
+    trainset = BasicDataset(train_path, training=True, resize=resize, scale_factor=4)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    validset = BasicDataset(valid_path, resize=resize, scale_factor=4)
+    validset = BasicDataset(valid_path, training=False, resize=resize, scale_factor=4)
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
