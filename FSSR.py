@@ -321,7 +321,7 @@ def model_train(train_path, valid_path,                             # data
         model.load_state_dict(best_model) # In place anyway
         return model # Returning just in case
 
-    resize = (512, 1024) # force resize since we are working with batch_size > 1
+    resize = (256, 512) # force resize since we are working with batch_size > 1
     trainset = BasicDataset(train_path, resize=resize)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
 
