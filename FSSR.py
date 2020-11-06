@@ -240,6 +240,8 @@ def model_train(train_path, valid_path,                             # data
     if not name:
         name = '%s_vanilla-%s_%ie-b%i' % (model_name, 'finetuning' if load_weights else 'training', epoch_nb, batch_size)
 
+    print('name of task:', name)
+
     Logger.start('%s.log' % name, verbose)
 
     if model_name == 'EDSR':
@@ -270,9 +272,7 @@ def model_train(train_path, valid_path,                             # data
             for i, data in enumerate(trainloader):
                 query, label = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
-                print('input size:', query.shape)
                 query = model(query)
-                print('output size:', query.shape)
                 loss = F.mse_loss(query, label)
                 loss.backward()
                 optimizer.step()
@@ -324,10 +324,10 @@ def model_train(train_path, valid_path,                             # data
         return model # Returning just in case
 
     resize = (256, 512) # force resize since we are working with batch_size > 1
-    trainset = BasicDataset(train_path, resize=resize)
+    trainset = BasicDataset(train_path, resize=resize, scale_factor=4)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    validset = BasicDataset(valid_path, resize=resize)
+    validset = BasicDataset(valid_path, resize=resize, scale_factor=4)
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
