@@ -9,10 +9,11 @@ from evaluation import evaluation
 if __name__ == "__main__":
     parser = ArgumentParser()
 
-    parser.add_argument('--mode', default='meta_train', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'],
-        help="Run mode to launch.")
-    parser.add_argument('--operation_name', default='',
-        help="Name of the operation that is run")
+    parser.add_argument('--mode', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'],
+        help="The name of the mode to run")
+    parser.add_argument('--operation_name',
+        help="Name of the operation that is run (for naming files)")
+
     parser.add_argument('--device', default='cuda_if_available', choices=['cpu', 'cuda', 'cuda_if_available'],
         help="Leave default to use the GPU if it is available. CPU can't be used for training without changing the code.")
 
@@ -23,23 +24,27 @@ if __name__ == "__main__":
 
     parser.add_argument('--verbose', default=True, type=bool, choices=[True, False],
         help="Whether the script print info in stdout.")
+
     parser.add_argument('--network_name',  default='EDSR', choices=['EDSR'],
         help="Indicates which network is being used.")
-    parser.add_argument('--batch_size', default=1, type=int,
+    parser.add_argument('--batch_size', type=int,
         help="Batch size i.e the number of images for each training iteration as an integer.")
+    parser.add_argument('--scale', type=int,
+        help="The scaling factor for an upscaling task.")
+    parser.add_argument('--epoch_nb', type=int,
+        help="Number of epochs for training i.e the number of times the whole training set is iterated over as an integer. Only for 'train' mode.")
+
 
     parser.add_argument('--load_weights', default=None,
         help="Path to the weights to continue training, perform upscaling on a set of images or evaluate performance.")
     parser.add_argument('--save_weights', default='./weights/test.pt',
         help="Path to save the weights after training (.pth). Only for 'train' mode.")
 
-    parser.add_argument('--train_folder', default='../../../../mnt/data/prim_project/dataset/FSSR/DIV2K/DIV2K_train_HR/',
-        help="Path to the folder containing the images of the training set. Only for 'train' mode.")
-    parser.add_argument('--valid_folder', default='../../../../mnt/data/prim_project/dataset/FSSR/DIV2K/DIV2K_valid_HR/',
-        help="Path to the folder containing the images of the validation set. Only for 'train' mode.")
+    parser.add_argument('--train_folder',
+        help="Path to the folder containing the images of the training set.")
+    parser.add_argument('--valid_folder',
+        help="Path to the folder containing the images of the validation set.")
 
-    parser.add_argument('--epoch_nb', default=10, type=int,
-        help="Number of epochs for training i.e the number of times the whole training set is iterated over as an integer. Only for 'train' mode.")
     parser.add_argument('--learning_rate', default=0.0001, type=float,
         help="Learning rate for training with Adam optimizer. Only for 'meta_train' & 'meta_upscale' mode.")
     parser.add_argument('--meta_learning_rate', default=0.00001,
@@ -52,6 +57,8 @@ if __name__ == "__main__":
         help="Number of parameter tensors to be finetuned in finetune_maml mode. 0 to modify all layers.")
 
     opt = parser.parse_args()
+
+    assert(opt.mode)
 
     if opt.mode == 'meta_train':
         meta_train(train_path=opt.train_folder,
@@ -96,11 +103,14 @@ if __name__ == "__main__":
         pass
 
     elif opt.mode == 'model_train':
-        print('train path: %s' % opt.train_folder)
-        print('validation path: %s' % opt.valid_folder)
-        print('nb of epochs: %i' % opt.epoch_nb)
+        assert(opt.train_folder and opt.valid_folder and opt.epoch_nb and opt.batch_size and opt.scale)
+
+        print('train dir: %s' % opt.train_folder)
+        print('valid dir: %s' % opt.valid_folder)
+        print('epochs nb: %i' % opt.epoch_nb)
+        print('scale factor: x%i' % opt.scale)
         print('batch size: %i' % opt.batch_size)
-        print('loading weights %s %s' % (bool(opt.load_weights), opt.load_weights if opt.load_weights else '' ))
+        print('loading weights?: %s %s' % (bool(opt.load_weights), opt.load_weights if opt.load_weights else '' ))
 
         model_train(train_path=opt.train_folder,
                     valid_path=opt.valid_folder,
@@ -108,11 +118,8 @@ if __name__ == "__main__":
                     batch_size=opt.batch_size,
                     load_weights=opt.load_weights,
                     save_weights=opt.save_weights,
-                    name=opt.operation_name)
+                    name=opt.operation_name,
+                    scale=opt.scale)
 
     elif opt.mode == 'upscale':
-        # assert()
         upscale(load_weights=opt.load_weights, input=opt.input, out=opt.output)
-
-    else:
-        raise Exception("Invalid mode. Run this command if you need help: $ python run.py --help")

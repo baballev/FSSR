@@ -233,19 +233,19 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
     return
 
 def model_train(train_path, valid_path,                             # data
-                load_weights=None, model_name='EDSR',               # model
+                load_weights=None, model_name='EDSR', scale=4,      # model
                 epoch_nb=10, learning_rate=0.0001, batch_size=16,   # hyper-params
                 name='', save_weights='weights.pt', verbose=True):  # run setting
 
     if not name:
-        name = '%s_vanilla-%s_%ie-b%i' % (model_name, 'finetuning' if load_weights else 'training', epoch_nb, batch_size)
+        name = '%sx%i_vanilla-%s_%ie-b%i' % (model_name, scale, 'finetuning' if load_weights else 'training', epoch_nb, batch_size)
 
     print('name of task:', name)
 
     Logger.start('%s.log' % name, verbose)
 
     if model_name == 'EDSR':
-        model = EDSR(scale=4).to(device)
+        model = EDSR(scale=scale).to(device)
 
     if load_weights is not None:
         model.load_state_dict(torch.load(load_weights))
@@ -278,10 +278,11 @@ def model_train(train_path, valid_path,                             # data
                 optimizer.step()
                 # print(loss.item())
 
-                if i%100 == 0:
-                    print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
                 running_loss += loss.item()
                 verbose_loss += loss.item()
+
+                if i%100 == 0:
+                    print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
                 if i% 100 == 0 and i !=0:
                     print("Loss over last 100 batches: " + str(verbose_loss/(100*batch_size)), flush=True)
                     verbose_loss = 0.0
@@ -324,10 +325,10 @@ def model_train(train_path, valid_path,                             # data
         return model # Returning just in case
 
     resize = (256, 512) # force resize since we are working with batch_size > 1
-    trainset = BasicDataset(train_path, training=True, resize=resize, scale_factor=4)
+    trainset = BasicDataset(train_path, training=True, resize=resize, scale_factor=scale)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    validset = BasicDataset(valid_path, training=False, resize=resize, scale_factor=4)
+    validset = BasicDataset(valid_path, training=False, resize=resize, scale_factor=scale)
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
