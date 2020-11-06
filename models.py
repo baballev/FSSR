@@ -135,6 +135,7 @@ class EDSR(nn.Module):
         self.config.append(('conv2d', [n_feats, n_feats, kernel_size, kernel_size, 1, (kernel_size // 2)]))
 
         # define tail module
+        print('scale of upsampler:', scale)
         m_tail = [
             Upsampler(nn.Conv2d, scale, n_feats, act=False),
             nn.Conv2d(n_feats, 3, kernel_size, padding=(kernel_size // 2))
