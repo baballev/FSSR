@@ -21,6 +21,12 @@ import torchvision.transforms as transforms
 #   plt.pause(2)
 #   plt.close()
 
+def require_args(opt):
+    def require(*args):
+        for arg in args:
+            assert getattr(opt, arg), 'argument --{} is required to run --mode={}'.format(arg.replace('_', '-'), opt.mode)
+    return require
+
 # def show_image(input_tensor, n=0):
 #     y = input_tensor.detach()[n].cpu().numpy().transpose((1, 2, 0))
 #     plt.imshow(y)

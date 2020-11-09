@@ -1,15 +1,17 @@
-from argparse import ArgumentParser
 import os
+from argparse import ArgumentParser
 
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
 from FSSR import meta_train, finetuneMaml, MAMLupscale, model_train, upscale
 from evaluation import evaluation
+from utils import require_args
+
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 ## Parser
 if __name__ == "__main__":
     parser = ArgumentParser()
 
-    parser.add_argument('--mode', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'],
+    parser.add_argument('-m', '--mode', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'], required=True,
         help="The name of the mode to run")
     parser.add_argument('--operation_name',
         help="Name of the operation that is run (for naming files)")
@@ -57,8 +59,7 @@ if __name__ == "__main__":
         help="Number of parameter tensors to be finetuned in finetune_maml mode. 0 to modify all layers.")
 
     opt = parser.parse_args()
-
-    assert(opt.mode)
+    require = require_args(opt)
 
     if opt.mode == 'meta_train':
         meta_train(train_path=opt.train_folder,
@@ -103,7 +104,7 @@ if __name__ == "__main__":
         pass
 
     elif opt.mode == 'model_train':
-        assert(opt.train_folder and opt.valid_folder and opt.epoch_nb and opt.batch_size and opt.scale)
+        require('train_folder', 'valid_folder', 'epoch_nb', 'batch_size', 'scale')
 
         print('train dir: %s' % opt.train_folder)
         print('valid dir: %s' % opt.valid_folder)

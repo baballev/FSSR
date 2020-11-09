@@ -14,7 +14,7 @@ import warnings
 from models import *
 from meta import Meta
 import utils
-from loss_functions import perceptionLoss, ultimateLoss
+from loss_functions import perceptionLoss, ultimateLoss, VGGPerceptualLoss
 from finetuner import FineTuner
 
 from datasets.BasicDataset import BasicDataset
@@ -247,6 +247,8 @@ def model_train(train_path, valid_path,                             # data
     if model_name == 'EDSR':
         model = EDSR(scale=scale).to(device)
 
+    perception_loss =  VGGPerceptualLoss().to(device)
+
     if load_weights is not None:
         model.load_state_dict(torch.load(load_weights))
         print("Loaded weights from: " + str(load_weights), flush=True)
@@ -270,13 +272,12 @@ def model_train(train_path, valid_path,                             # data
             running_loss = 0.0
             verbose_loss = 0.0
             for i, data in enumerate(trainloader):
-                query, label = data[0].to(device), data[1].to(device)
+                x, y = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
-                query = model(query)
-                loss = F.mse_loss(query, label)
+                y_hat = model(x)
+                loss = perception_loss(y_hat, y)
                 loss.backward()
                 optimizer.step()
-                # print(loss.item())
 
                 running_loss += loss.item()
                 verbose_loss += loss.item()
@@ -300,9 +301,9 @@ def model_train(train_path, valid_path,                             # data
             verbose_loss = 0.0
             with torch.no_grad():
                 for i, data in enumerate(validloader):
-                    query, label =  data[0].to(device), data[1].to(device)
-                    query = model(query)
-                    loss = F.mse_loss(query, label)
+                    x, y = data[0].to(device), data[1].to(device)
+                    y_hat = model(x)
+                    loss = perception_loss(y_hat, y)
                     running_loss += loss.item()
 
                 # Verbose 3
