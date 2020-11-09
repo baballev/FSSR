@@ -228,6 +228,10 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
 
     return
 
+def save_model_state(state_dict, fp, verbose=True):
+    torch.save(state_dict, fp)
+    print('Weights saved to: %s' % save_path) if verbose else 0
+
 def model_train(train_path, valid_paths,                            # data
                 load_weights=None, model_name='EDSR', scale=4,      # model
                 epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
@@ -310,10 +314,10 @@ def model_train(train_path, valid_paths,                            # data
             batch_size=batch_size, shuffle=True, num_workers=2))
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
-    model = train(model, epochs, train_loader, valid_loaders, optimizer)
-    makeCheckpoint(model, save_weights)
+    best_model_state_dict = train(model, epochs, train_loader, valid_loaders, optimizer)
+    save_model_state(best_model_state_dict, save_weights)
 
-    return
+    return best_model
 
 def upscale(load_weights, input, out):
     edsr = EDSR().to(device)
