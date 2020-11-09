@@ -62,8 +62,8 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     require = require_args(opt)
     summarize = summarize_args(opt, {
-        'train_folder': lambda x: 'training path: %s' % x,
-        'valid_folders': lambda x: 'validation paths: %s' % ' | '.join(x),
+        'train_folder': lambda x: 'training set: %s' % x,
+        'valid_folders': lambda x: 'validation sets: %s' % ' | '.join(x),
         'epochs': lambda x: 'epochs nb: %i' % x,
         'scale': lambda x: 'scale factor: x%i' % x,
         'batch_size': lambda x: 'batch size: %i' % x,

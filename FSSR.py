@@ -238,7 +238,11 @@ def model_train(train_path, valid_paths,                            # data
                 name='', save_weights='weights.pt', verbose=True):  # run setting
 
     if not name:
-        name = '%sx%i_vanilla-%s_%ie-b%i' % (model_name, scale, 'finetuning' if load_weights else 'training', epochs, batch_size)
+        if load_weights:
+            name = '%s_finetuning' % (load_weights.split('.')[0], )
+        else:
+            name ='%sx%i_training' % (model_name, scale)
+        name += '-%s-%ie-bs%i' % (train_path.replace('_', '-'), epochs, batch_size)
 
     print('name of task:', name)
 
@@ -262,15 +266,11 @@ def model_train(train_path, valid_paths,                            # data
         print("Training start", flush=True)
 
         for epoch in range(epochs):
-            # Verbose 1
-            if verbose:
-                print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]", flush=True)
-                print("-" * 10, flush=True)
+            print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]", flush=True)
 
             # Training
             running_loss = 0.0
-            verbose_loss = 0.0
-            for i, data in enumerate(train_loader):
+            for i, x in (t := tqdm(enumerate(train_loader), total=len(train_loader))):
                 x, y = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
                 y_hat = model(x)
@@ -279,51 +279,33 @@ def model_train(train_path, valid_paths,                            # data
                 optimizer.step()
 
                 running_loss += loss.item()
-                verbose_loss += loss.item()
+                t.set_description('loss %.4f' % loss.item())
 
-                if i%100 == 0:
-                    print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
-                if i% 100 == 0 and i !=0:
-                    print("Loss over last 100 batches: " + str(verbose_loss/(100*batch_size)), flush=True)
-                    verbose_loss = 0.0
-
-            # Verbose 2
-            if verbose:
-                epoch_loss = running_loss / (train_size*batch_size)
-                print(" ", flush=True)
-                print(" ", flush=True)
-                print("****************")
-                print('Training Loss: {:.7f}'.format(epoch_loss), flush=True)
+            print('Training loss: %.4f' % (running_loss/len(train_loader)))
 
             # Validation
-            running_loss = 0.0
-            verbose_loss = 0.0
             with torch.no_grad():
-                for valid_loader, set_name in zip(valid_loaders, valid_paths):
+                for valid_loader, loader_name in zip(valid_loaders, valid_paths):
+                    running_loss = 0.0
                     for i, data in enumerate(valid_loader):
                         x, y = data[0].to(device), data[1].to(device)
                         y_hat = model(x)
                         loss = perception_loss(y_hat, y)
                         running_loss += loss.item()
 
-                    # Verbose 3
-                    if verbose:
-                        epoch_loss = running_loss/(valid_size*batch_size)
-                        print('Validation loss on {}: {:.7f}'.format(set_name, epoch_loss))
+                    print('Validation loss on %s: %.4f' % (loader_name, running_loss/len(valid_loader)))
 
             # Copy the model if it gets better with validation
             if epoch_loss < best_loss:
                 best_loss = epoch_loss
                 best_model = copy.deepcopy(model.state_dict())
 
-        # Verbose 4
-        if verbose:
-            time_elapsed = time.time() - since
-            print("Training finished in {:.0f}m {:.0f}s".format(time_elapsed//60, time_elapsed % 60), flush=True)
-            print("Best validation loss: " + str(best_loss), flush=True)
+        time_elapsed = time.time() - since
+        print('Training finished in %fm %fs' % (time_elapsed//60, time_elapsed%60))
+        print('Best validation loss: %.4f' % best_loss)
 
         model.load_state_dict(best_model) # In place anyway
-        return model # Returning just in case
+        return model
 
     resize = (256, 512) # force resize since we are working with batch_size > 1
 
