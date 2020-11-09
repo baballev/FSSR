@@ -1,15 +1,11 @@
-import imghdr
-import os
-from PIL import Image
+import os, sys
+
 import torch
 import torchvision
 import torchvision.transforms as transforms
+import imghdr
+from PIL import Image
 # import matplotlib.pyplot as plt
-
-# print(os.path.realpath(__file__))
-# print(os.path.dirname(os.path.realpath(__file__)), flush=True)
-# os.chdir(os.path.dirname(os.path.realpath(__file__)))
-# print(os.getcwd(), flush=True)
 
 # def show_image(image, title='', keep_alive=True):
 #   plt.figure()
@@ -20,6 +16,20 @@ import torchvision.transforms as transforms
 #   plt.draw()
 #   plt.pause(2)
 #   plt.close()
+
+class Logger(object):
+    def __init__(self, fp):
+        self.file = open(fp, 'a')
+
+    def write(self, str):
+        sys.stdout.write(str)
+        self.file.write(str)
+
+    def flush(self):
+        pass
+
+    def __del__(self):
+        self.file.close()
 
 def require_args(opt):
     def require(*args):
@@ -32,12 +42,6 @@ def summarize_args(opt, verbose):
         for arg in args:
             print(verbose[arg](getattr(opt, arg))) if arg in verbose and hasattr(opt, arg) else 0
     return summarize
-
-
-# def show_image(input_tensor, n=0):
-#     y = input_tensor.detach()[n].cpu().numpy().transpose((1, 2, 0))
-#     plt.imshow(y)
-#     plt.pause(1)
 
 def is_image(path):
     # Checks the first bytes of the file to see if it's a valid png/jpeg

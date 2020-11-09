@@ -10,7 +10,6 @@ import torchvision.io
 import torchvision.transforms as transforms
 
 import utils
-import Logger
 from models import *
 from meta import Meta
 from finetuner import FineTuner
@@ -240,9 +239,8 @@ def model_train(train_path, valid_paths,                            # data
             name ='%sx%i_training' % (model_name, scale)
         name += '-%s-%ie-bs%i' % (train_path.replace('_', '-'), epochs, batch_size)
 
-    print('name of task:', name)
-
-    Logger.start('%s.log' % name, verbose)
+    logger = utils.Logger('%s.log' % name)
+    print('Running [%s]' % name, file=logger)
 
     if model_name == 'EDSR':
         model = EDSR(scale=scale).to(device)
@@ -251,7 +249,7 @@ def model_train(train_path, valid_paths,                            # data
 
     if load_weights is not None:
         model.load_state_dict(torch.load(load_weights))
-        print("Loaded weights from: " + str(load_weights), flush=True)
+        print("Loaded weights from: " + str(load_weights))
 
     def train(model, epochs, train_loader, valid_loaders, optimizer):
         since = time.time()
@@ -259,7 +257,7 @@ def model_train(train_path, valid_paths,                            # data
         best_loss = math.inf
 
         for epoch in range(epochs):
-            print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]", flush=True)
+            print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]")
 
             # Training
             running_loss = 0.0
@@ -274,7 +272,7 @@ def model_train(train_path, valid_paths,                            # data
                 running_loss += loss.item()
                 t.set_description('loss: %.4f' % loss.item())
 
-            print('Training loss: %.4f' % (running_loss/len(train_loader)))
+            print('Training loss: %.4f' % (running_loss/len(train_loader)), file=logger)
 
             # Validation
             with torch.no_grad():
@@ -287,7 +285,7 @@ def model_train(train_path, valid_paths,                            # data
                         running_loss += loss.item()
 
                     epoch_loss = running_loss/len(valid_loader)
-                    print('Validation loss on %s: %.4f' % (loader_name, epoch_loss))
+                    print('Validation loss on %s: %.4f' % (loader_name, epoch_loss), file=logger)
 
             # Copy the model if it gets better with validation
             if epoch_loss < best_loss:
@@ -314,7 +312,6 @@ def model_train(train_path, valid_paths,                            # data
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
     model = train(model, epochs, train_loader, valid_loaders, optimizer)
     makeCheckpoint(model, save_weights)
-    Logger.stop()
 
     return
 
