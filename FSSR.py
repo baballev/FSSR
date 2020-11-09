@@ -317,7 +317,6 @@ def model_train(train_path, valid_paths,                            # data
     best_model_state_dict = train(model, epochs, train_loader, valid_loaders, optimizer)
     save_model_state(best_model_state_dict, save_weights)
 
-    return best_model
 
 def upscale(load_weights, input, out):
     edsr = EDSR().to(device)
