@@ -230,7 +230,7 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
 
 def save_model_state(state_dict, fp, verbose=True):
     torch.save(state_dict, fp)
-    print('Weights saved to: %s' % save_path) if verbose else 0
+    print('Weights saved to: %s' % fp) if verbose else 0
 
 def model_train(train_path, valid_paths,                            # data
                 load_weights=None, model_name='EDSR', scale=4,      # model
