@@ -24,8 +24,15 @@ import torchvision.transforms as transforms
 def require_args(opt):
     def require(*args):
         for arg in args:
-            assert getattr(opt, arg), 'argument --{} is required to run --mode={}'.format(arg.replace('_', '-'), opt.mode)
+            assert hasattr(opt, arg) and getattr(opt, arg), 'argument --{} is required to run --mode={}'.format(arg.replace('_', '-'), opt.mode)
     return require
+
+def summarize_args(opt, verbose):
+    def summarize(*args):
+        for arg in args:
+            print(verbose[arg](getattr(opt, arg))) if arg in verbose and hasattr(opt, arg) else 0
+    return summarize
+
 
 # def show_image(input_tensor, n=0):
 #     y = input_tensor.detach()[n].cpu().numpy().transpose((1, 2, 0))

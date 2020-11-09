@@ -234,11 +234,11 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
 
 def model_train(train_path, valid_path,                             # data
                 load_weights=None, model_name='EDSR', scale=4,      # model
-                epoch_nb=10, learning_rate=0.0001, batch_size=16,   # hyper-params
+                epochs=10, learning_rate=0.0001, batch_size=16,   # hyper-params
                 name='', save_weights='weights.pt', verbose=True):  # run setting
 
     if not name:
-        name = '%sx%i_vanilla-%s_%ie-b%i' % (model_name, scale, 'finetuning' if load_weights else 'training', epoch_nb, batch_size)
+        name = '%sx%i_vanilla-%s_%ie-b%i' % (model_name, scale, 'finetuning' if load_weights else 'training', epochs, batch_size)
 
     print('name of task:', name)
 
@@ -253,7 +253,7 @@ def model_train(train_path, valid_path,                             # data
         model.load_state_dict(torch.load(load_weights))
         print("Loaded weights from: " + str(load_weights), flush=True)
 
-    def train(model, epochs_nb, trainloader, validloader, optimizer):
+    def train(model, epochs, trainloader, validloader, optimizer):
         since = time.time()
         best_model = copy.deepcopy(model.state_dict())
         best_loss = 6500000.0
@@ -261,11 +261,11 @@ def model_train(train_path, valid_path,                             # data
         valid_size = len(validloader)
         print("Training start", flush=True)
 
-        for epoch in range(epochs_nb):
+        for epoch in range(epochs):
 
             # Verbose 1
             if verbose:
-                print("Epoch [" + str(epoch+1) + " / " + str(epochs_nb) + "]", flush=True)
+                print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]", flush=True)
                 print("-" * 10, flush=True)
 
             # Training
@@ -333,7 +333,7 @@ def model_train(train_path, valid_path,                             # data
     validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
-    model = train(model, epoch_nb, trainloader, validloader, optimizer)
+    model = train(model, epochs, trainloader, validloader, optimizer)
     makeCheckpoint(model, save_weights)
     Logger.stop()
 

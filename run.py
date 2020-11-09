@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 
 from FSSR import meta_train, finetuneMaml, MAMLupscale, model_train, upscale
 from evaluation import evaluation
-from utils import require_args
+from utils import require_args, summarize_args
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
@@ -13,12 +13,32 @@ if __name__ == "__main__":
 
     parser.add_argument('-m', '--mode', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'], required=True,
         help="The name of the mode to run")
-    parser.add_argument('--operation_name',
-        help="Name of the operation that is run (for naming files)")
 
-    parser.add_argument('--device', default='cuda_if_available', choices=['cpu', 'cuda', 'cuda_if_available'],
-        help="Leave default to use the GPU if it is available. CPU can't be used for training without changing the code.")
+    parser.add_argument('--name',
+        help='Name of the operation that is run, used for naming .log and .pt files')
 
+    parser.add_argument('--device', default='cuda:0', choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda_if_available'],
+        help='Device identifier to run the process on.')
+
+    parser.add_argument('--model',  default='EDSR', choices=['EDSR'],
+        help='Indicates which neural network to use.')
+    parser.add_argument('--batch-size', type=int,
+        help='The number of images for each training iteration as an integer.')
+    parser.add_argument('--scale', type=int,
+        help='The scaling factor for an upscaling task.')
+    parser.add_argument('--epochs', type=int,
+        help='Number of epochs for training i.e number of times the training set is iterated over.')
+
+    parser.add_argument('--train-folder',
+        help='Path to the folder containing the images of the training set.')
+    parser.add_argument('--valid-folder',
+        help='Path to the folder containing the images of the validation set.')
+    parser.add_argument('--load-weights', default=None,
+        help='Path to the weights to continue training, perform upscaling or evaluate performance.')
+    parser.add_argument('--save-weights', default='./weights/test.pt',
+        help='Path to save the weights after training (.pt).')
+
+    # ~todo
     parser.add_argument('--input', default='../CelebA/', # '../../../../mnt/data/prim_project/dataset/FSSR/CelebA/'
         help="Path to the directory containing the images to upscale. Only used for upscaling or evaluation.")
     parser.add_argument('--output', default='./out/',
@@ -27,25 +47,6 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', default=True, type=bool, choices=[True, False],
         help="Whether the script print info in stdout.")
 
-    parser.add_argument('--network_name',  default='EDSR', choices=['EDSR'],
-        help="Indicates which network is being used.")
-    parser.add_argument('--batch_size', type=int,
-        help="Batch size i.e the number of images for each training iteration as an integer.")
-    parser.add_argument('--scale', type=int,
-        help="The scaling factor for an upscaling task.")
-    parser.add_argument('--epoch_nb', type=int,
-        help="Number of epochs for training i.e the number of times the whole training set is iterated over as an integer. Only for 'train' mode.")
-
-
-    parser.add_argument('--load_weights', default=None,
-        help="Path to the weights to continue training, perform upscaling on a set of images or evaluate performance.")
-    parser.add_argument('--save_weights', default='./weights/test.pt',
-        help="Path to save the weights after training (.pth). Only for 'train' mode.")
-
-    parser.add_argument('--train_folder',
-        help="Path to the folder containing the images of the training set.")
-    parser.add_argument('--valid_folder',
-        help="Path to the folder containing the images of the validation set.")
 
     parser.add_argument('--learning_rate', default=0.0001, type=float,
         help="Learning rate for training with Adam optimizer. Only for 'meta_train' & 'meta_upscale' mode.")
@@ -60,12 +61,20 @@ if __name__ == "__main__":
 
     opt = parser.parse_args()
     require = require_args(opt)
+    summarize = summarize_args(opt, {
+        'train_folder': lambda x: 'train dir: %s' % x,
+        'valid_folder': lambda x: 'valid dir: %s' % x,
+        'epochs': lambda x: 'epochs nb: %i' % x,
+        'scale': lambda x: 'scale factor: x%i' % x,
+        'batch_size': lambda x: 'batch size: %i' % x,
+        'load_weights': lambda x: 'loading weights?: %s %s' % (bool(x), x if x else '' ),
+    })
 
     if opt.mode == 'meta_train':
         meta_train(train_path=opt.train_folder,
                    valid_path=opt.valid_folder,
                    batch_size=opt.batch_size,
-                   epoch_nb=opt.epoch_nb,
+                   epochs=opt.epochs,
                    learning_rate=opt.learning_rate,
                    meta_learning_rate=opt.meta_learning_rate,
                    save_path=opt.save_weights,
@@ -73,19 +82,19 @@ if __name__ == "__main__":
                    weights_load=opt.load_weights,
                    loss_func=opt.loss,
                    loss_network=opt.loss_network,
-                   network=opt.network_name)
+                   network=opt.model)
 
     elif opt.mode == 'finetune_maml':
         finetuneMaml(train_path=opt.train_folder,
                      valid_path=opt.valid_folder,
                      batch_size=opt.batch_size,
-                     epoch_nb=opt.epoch_nb,
+                     epochs=opt.epochs,
                      learning_rate=opt.learning_rate,
                      meta_learning_rate=opt.meta_learning_rate,
                      load_weights=opt.load_weights,
                      save_weights=opt.save_weights,
                      finetune_depth=opt.finetune_depth,
-                     network=opt.network_name)
+                     network=opt.model)
 
     elif opt.mode == 'meta_upscale':
         MAMLupscale(in_path=opt.input,
@@ -95,7 +104,7 @@ if __name__ == "__main__":
                     batch_size=opt.batch_size,
                     verbose=opt.verbose,
                     device_name=opt.device,
-                    network=opt.network_name)
+                    network=opt.model)
 
     elif opt.mode == 'evaluation':
         evaluation(in_path=opt.input, out_path=opt.output, verbose=True)
@@ -104,22 +113,16 @@ if __name__ == "__main__":
         pass
 
     elif opt.mode == 'model_train':
-        require('train_folder', 'valid_folder', 'epoch_nb', 'batch_size', 'scale')
-
-        print('train dir: %s' % opt.train_folder)
-        print('valid dir: %s' % opt.valid_folder)
-        print('epochs nb: %i' % opt.epoch_nb)
-        print('scale factor: x%i' % opt.scale)
-        print('batch size: %i' % opt.batch_size)
-        print('loading weights?: %s %s' % (bool(opt.load_weights), opt.load_weights if opt.load_weights else '' ))
+        require('train_folder', 'valid_folder', 'epochs', 'batch_size', 'scale')
+        summarize('train_folder', 'valid_folder', 'epochs', 'scale', 'batch_size', 'load_weights')
 
         model_train(train_path=opt.train_folder,
                     valid_path=opt.valid_folder,
-                    epoch_nb=opt.epoch_nb,
+                    epochs=opt.epochs,
                     batch_size=opt.batch_size,
                     load_weights=opt.load_weights,
                     save_weights=opt.save_weights,
-                    name=opt.operation_name,
+                    name=opt.name,
                     scale=opt.scale)
 
     elif opt.mode == 'upscale':
