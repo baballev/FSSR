@@ -232,9 +232,9 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
 
     return
 
-def model_train(train_path, valid_path,                             # data
+def model_train(train_path, valid_paths,                            # data
                 load_weights=None, model_name='EDSR', scale=4,      # model
-                epochs=10, learning_rate=0.0001, batch_size=16,   # hyper-params
+                epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
                 name='', save_weights='weights.pt', verbose=True):  # run setting
 
     if not name:
@@ -253,16 +253,15 @@ def model_train(train_path, valid_path,                             # data
         model.load_state_dict(torch.load(load_weights))
         print("Loaded weights from: " + str(load_weights), flush=True)
 
-    def train(model, epochs, trainloader, validloader, optimizer):
+    def train(model, epochs, train_loader, valid_loaders, optimizer):
         since = time.time()
         best_model = copy.deepcopy(model.state_dict())
         best_loss = 6500000.0
-        train_size = len(trainloader)
-        valid_size = len(validloader)
+        train_size = len(train_loader)
+        valid_size = len(valid_loaders[0])
         print("Training start", flush=True)
 
         for epoch in range(epochs):
-
             # Verbose 1
             if verbose:
                 print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]", flush=True)
@@ -271,7 +270,7 @@ def model_train(train_path, valid_path,                             # data
             # Training
             running_loss = 0.0
             verbose_loss = 0.0
-            for i, data in enumerate(trainloader):
+            for i, data in enumerate(train_loader):
                 x, y = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
                 y_hat = model(x)
@@ -300,16 +299,17 @@ def model_train(train_path, valid_path,                             # data
             running_loss = 0.0
             verbose_loss = 0.0
             with torch.no_grad():
-                for i, data in enumerate(validloader):
-                    x, y = data[0].to(device), data[1].to(device)
-                    y_hat = model(x)
-                    loss = perception_loss(y_hat, y)
-                    running_loss += loss.item()
+                for valid_loader, set_name in zip(valid_loaders, valid_paths):
+                    for i, data in enumerate(valid_loader):
+                        x, y = data[0].to(device), data[1].to(device)
+                        y_hat = model(x)
+                        loss = perception_loss(y_hat, y)
+                        running_loss += loss.item()
 
-                # Verbose 3
-                if verbose:
-                    epoch_loss = running_loss / (valid_size*batch_size)
-                    print('Validation Loss: {:.7f}'.format(epoch_loss), flush=True)
+                    # Verbose 3
+                    if verbose:
+                        epoch_loss = running_loss/(valid_size*batch_size)
+                        print('Validation loss on {}: {:.7f}'.format(set_name, epoch_loss))
 
             # Copy the model if it gets better with validation
             if epoch_loss < best_loss:
@@ -326,14 +326,18 @@ def model_train(train_path, valid_path,                             # data
         return model # Returning just in case
 
     resize = (256, 512) # force resize since we are working with batch_size > 1
-    trainset = BasicDataset(train_path, training=True, resize=resize, scale_factor=scale)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-    validset = BasicDataset(valid_path, training=False, resize=resize, scale_factor=scale)
-    validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=True, num_workers=2)
+    train_set = BasicDataset(train_path, training=True, resize=resize, scale_factor=scale)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+
+    valid_loaders = []
+    for valid_path in valid_paths:
+        valid_set = BasicDataset(valid_path, training=False, resize=resize, scale_factor=scale)
+        valid_loaders.append(torch.utils.data.DataLoader(valid_set,
+            batch_size=batch_size, shuffle=True, num_workers=2))
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
-    model = train(model, epochs, trainloader, validloader, optimizer)
+    model = train(model, epochs, train_loader, valid_loaders, optimizer)
     makeCheckpoint(model, save_weights)
     Logger.stop()
 

@@ -1,16 +1,21 @@
 import os
-import torch
-import torchvision
-import torchvision.transforms as T
+
 from PIL import Image
+import torch, torchvision
+import torchvision.transforms as T
+
 from utils import list_images
+from .datasets import datasets
 
 class BasicDataset(torch.utils.data.Dataset):
     """
     Single image dataset fetcher
     """
-    def __init__(self, images_directory, scale_factor=2, memory_fit_factor=4, training=True, resize=None):
-        self.image_paths = list_images(images_directory)
+
+    def __init__(self, dir, scale_factor=2, memory_fit_factor=4, training=True, resize=None):
+        if (dir in datasets):
+            dir = datasets[dir]
+        self.image_paths = list_images(dir)
         self.training = training
         self.scale_factor = scale_factor
         self.memory_factor = memory_fit_factor

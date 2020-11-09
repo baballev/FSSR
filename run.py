@@ -31,8 +31,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--train-folder',
         help='Path to the folder containing the images of the training set.')
-    parser.add_argument('--valid-folder',
-        help='Path to the folder containing the images of the validation set.')
+    parser.add_argument('--valid-folders', nargs='+', type=str,
+        help='Path to the folder containing the images of the validation set. Can be multiple paths.')
     parser.add_argument('--load-weights', default=None,
         help='Path to the weights to continue training, perform upscaling or evaluate performance.')
     parser.add_argument('--save-weights', default='./weights/test.pt',
@@ -62,8 +62,8 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     require = require_args(opt)
     summarize = summarize_args(opt, {
-        'train_folder': lambda x: 'train dir: %s' % x,
-        'valid_folder': lambda x: 'valid dir: %s' % x,
+        'train_folder': lambda x: 'training path: %s' % x,
+        'valid_folders': lambda x: 'validation paths: %s' % ' | '.join(x),
         'epochs': lambda x: 'epochs nb: %i' % x,
         'scale': lambda x: 'scale factor: x%i' % x,
         'batch_size': lambda x: 'batch size: %i' % x,
@@ -113,11 +113,11 @@ if __name__ == "__main__":
         pass
 
     elif opt.mode == 'model_train':
-        require('train_folder', 'valid_folder', 'epochs', 'batch_size', 'scale')
-        summarize('train_folder', 'valid_folder', 'epochs', 'scale', 'batch_size', 'load_weights')
+        require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
+        summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
 
         model_train(train_path=opt.train_folder,
-                    valid_path=opt.valid_folder,
+                    valid_paths=opt.valid_folders,
                     epochs=opt.epochs,
                     batch_size=opt.batch_size,
                     load_weights=opt.load_weights,
