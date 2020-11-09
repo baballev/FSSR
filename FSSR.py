@@ -1,24 +1,21 @@
+import os,  time,  copy,  warnings, math
+
+from tqdm import tqdm
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
+import torch.nn.functional as F
 import torchvision
-import torchvision.transforms as transforms
-import os
-import time
-import copy
 import torchvision.io
-import warnings
+import torchvision.transforms as transforms
 
-#os.chdir(os.path.dirname(os.path.realpath(__file__)))
+import utils
+import Logger
 from models import *
 from meta import Meta
-import utils
-from loss_functions import perceptionLoss, ultimateLoss, VGGPerceptualLoss
 from finetuner import FineTuner
-
 from datasets.BasicDataset import BasicDataset
-import Logger
+from loss_functions import perceptionLoss, ultimateLoss, VGGPerceptualLoss
 
 warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
@@ -236,7 +233,6 @@ def model_train(train_path, valid_paths,                            # data
                 load_weights=None, model_name='EDSR', scale=4,      # model
                 epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
                 name='', save_weights='weights.pt', verbose=True):  # run setting
-
     if not name:
         if load_weights:
             name = '%s_finetuning' % (load_weights.split('.')[0], )
@@ -260,17 +256,14 @@ def model_train(train_path, valid_paths,                            # data
     def train(model, epochs, train_loader, valid_loaders, optimizer):
         since = time.time()
         best_model = copy.deepcopy(model.state_dict())
-        best_loss = 6500000.0
-        train_size = len(train_loader)
-        valid_size = len(valid_loaders[0])
-        print("Training start", flush=True)
+        best_loss = math.inf
 
         for epoch in range(epochs):
             print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]", flush=True)
 
             # Training
             running_loss = 0.0
-            for i, x in (t := tqdm(enumerate(train_loader), total=len(train_loader))):
+            for i, data in (t := tqdm(enumerate(train_loader), total=len(train_loader))):
                 x, y = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
                 y_hat = model(x)
@@ -279,7 +272,7 @@ def model_train(train_path, valid_paths,                            # data
                 optimizer.step()
 
                 running_loss += loss.item()
-                t.set_description('loss %.4f' % loss.item())
+                t.set_description('loss: %.4f' % loss.item())
 
             print('Training loss: %.4f' % (running_loss/len(train_loader)))
 
@@ -293,7 +286,8 @@ def model_train(train_path, valid_paths,                            # data
                         loss = perception_loss(y_hat, y)
                         running_loss += loss.item()
 
-                    print('Validation loss on %s: %.4f' % (loader_name, running_loss/len(valid_loader)))
+                    epoch_loss = running_loss/len(valid_loader)
+                    print('Validation loss on %s: %.4f' % (loader_name, epoch_loss))
 
             # Copy the model if it gets better with validation
             if epoch_loss < best_loss:
@@ -304,8 +298,7 @@ def model_train(train_path, valid_paths,                            # data
         print('Training finished in %fm %fs' % (time_elapsed//60, time_elapsed%60))
         print('Best validation loss: %.4f' % best_loss)
 
-        model.load_state_dict(best_model) # In place anyway
-        return model
+        return best_model
 
     resize = (256, 512) # force resize since we are working with batch_size > 1
 
