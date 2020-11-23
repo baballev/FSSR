@@ -66,7 +66,7 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     name = utils.construct_name(name='EDSRx%i' % scale, load=load, dataset=train_fp, epochs=epochs, bs=bs, type='meta')
     out = name + '.pth'
     logger = utils.Logger(name + '.log')
-    print('Running ->%s<- !' % name, file=logger)
+    print('Running -> %s <- !' % name, file=logger)
 
     autoencoder = EDSR(scale=scale)
 
@@ -86,9 +86,7 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     valid_dl = DataLoader(valid_set, batch_size=bs, num_workers=2, shuffle=False)
     print('Found %i images in validation set.' % len(valid_set))
 
-    print(autoencoder, flush=True)
-
-    meta_learner = MAMLtrain(meta_learner, epochs, train_dl, valid_dl, bs)
+    meta_learner = MAMLtrain(meta_learner, epochs, train_dl, valid_dl)
     save_model_state(meta_learner.state_dict(), save)
 
 
