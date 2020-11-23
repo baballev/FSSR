@@ -63,8 +63,10 @@ def MAMLtrain(model, epochs, train_dl, valid_dl):
 def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20,
     lr=0.0001, meta_lr=0.00001, save='out.pth'):
 
-    logger = utils.Logger('yes.log')
-    print('Running!', file=logger)
+    name = utils.construct_name(name='EDSRx%i' % scale, load=load, dataset=train_fp, epochs=epochs, bs=bs, type='meta')
+    out = name + '.pth'
+    logger = utils.Logger(name + '.log')
+    print('Running ->%s<- !' % name, file=logger)
 
     autoencoder = EDSR(scale=scale)
 
@@ -186,15 +188,11 @@ def model_train(train_path, valid_paths,                            # data
                 load_weights=None, model_name='EDSR', scale=4,      # model
                 epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
                 name='', save_weights='weights.pt', verbose=True):  # run setting
-    if not name:
-        if load_weights:
-            name = '%s_finetuning' % (load_weights.split('/')[-1].split('pt')[0])
-        else:
-            name = '%sx%i_training' % (model_name, scale)
-        name += '-%s-%ie-bs%i' % (train_path.replace('_', '-'), epochs, batch_size)
 
-    logger = utils.Logger('%s.log' % name)
-    print('Running [%s]' % name, file=logger)
+    name = utils.construct_name(name='EDSRx%i' % scale, load=load_weights, dataset=train_path, epochs=epochs, bs=batch_size, type='vanilla')
+    logger = utils.Logger(name + '.log')
+    # out = name + '.pth'
+    print('Running ->%s<- !' % name, file=logger)
 
     if model_name == 'EDSR':
         model = EDSR(scale=scale).to(device)

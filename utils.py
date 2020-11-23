@@ -28,6 +28,15 @@ def summarize_args(opt, verbose):
             print(verbose[arg](getattr(opt, arg))) if arg in verbose and hasattr(opt, arg) else 0
     return summarize
 
+def construct_name(name=None, load=None, dataset='?', epochs=0, bs=0, type='?'):
+    if load:
+        fp = os.path.normpath(load)
+        prefix = fp.split(os.sep)[-1].split('.pt')[0]
+    elif name:
+        prefix = name
+    else:
+        prefix = 'Unknown'
+    return '%s[%s_%s_%ie_bs%i]' % (prefix, type, dataset.replace('_', '-'), epochs, bs)
 
 def is_image(path):
     return imghdr.what(path) == 'jpeg' or imghdr.what(path) == 'png'
