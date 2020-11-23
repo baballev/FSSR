@@ -301,30 +301,29 @@ class Meta(nn.Module):
         :param y_qry:   [b, querysz, c_, h, w]
         :return:
         """
-        task_num, setsz, c_, h, w = x_spt.size()
-        # The number of tasks handled is basically the batch size. Default will be = 1.
+        num_task, setsz, c_, h, w = x_spt.size()
 
         losses_q = [0 for _ in range(self.update_step + 1)]  # losses_q[i] is the loss on step i
 
-        for i in range(task_num):
+        for i in range(num_task):
 
             # 1. run the i-th task and compute loss for k=0
             reconstructed = self.net(x_spt[i], vars=None, bn_training=True)
-            loss = self.loss_func(reconstructed, y_spt[i]) # ToDo: Make the loss function customizable.
+            loss = self.loss_func(reconstructed, y_spt[i])
             grad = torch.autograd.grad(loss, self.net.parameters())
             fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, self.net.parameters())))
 
-            # this is the loss and accuracy before first update
+            # this is the loss before first update
             with torch.no_grad():
                 # [setsz, nway]
-                reconstructed_q = self.net(x_qry, self.net.parameters(), bn_training=True) # not updated weights
+                reconstructed_q = self.net(x_qry, self.net.parameters(), bn_training=True)
                 loss_q = self.loss_func(reconstructed_q, y_qry)
                 losses_q[0] += loss_q
 
-            # this is the loss and accuracy after the first update
+            # this is the loss after the first update
             with torch.no_grad():
                 # [setsz, nway]
-                reconstructed_q = self.net(x_qry, fast_weights, bn_training=True) # updated weights
+                reconstructed_q = self.net(x_qry, fast_weights, bn_training=True)
                 loss_q = self.loss_func(reconstructed_q, y_qry)
                 losses_q[1] += loss_q
 
@@ -332,36 +331,29 @@ class Meta(nn.Module):
                 # 1. run the i-th task and compute loss for k=1~K-1
                 reconstructed = self.net(x_spt[i], fast_weights, bn_training=True)
                 loss = self.loss_func(reconstructed, y_spt[i])
-                #print(loss)
-                # 2. compute grad on theta_pi
+                # 2. compute grad on theta_i
                 grad = torch.autograd.grad(loss, fast_weights)
-                # 3. theta_pi = theta_pi - train_lr * grad
+                # 3. theta_i = theta_i - train_lr * grad
                 fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, fast_weights)))
 
                 # Keep track of the loss on the query set
                 reconstructed_q = self.net(x_qry, fast_weights, bn_training=True)
-                # loss_q will be overwritten and just keep the loss_q on last update step.
                 loss_q = self.loss_func(reconstructed_q, y_qry)
                 losses_q[k + 1] += loss_q
-                del reconstructed_q
-                del reconstructed
 
         # end of all tasks
+        # losses step by step on query set across all tasks
+        losses_q = [loss_q/num_task for loss_q in losses_q]
         # sum over all losses on query set across all tasks
-        loss_q = losses_q[-1] / task_num
-        # THIS IS THE SUM OF THE LOSSES OVER ALL k BECAUSE WE DID NOT RESET GRADS WITH zero_grad() at each new step SO BY DEFAULT PYTORCH SUM THEM UP (because it's useful for LSTM and other stuff).
+        loss_q = losses_q[-1]
 
         # optimize theta parameters
         self.meta_optim.zero_grad()
         loss_q.backward()
-        # print('meta update')
-        # for p in self.net.parameters()[:5]:
-        # 	print(torch.norm(p).item())
         self.meta_optim.step()
 
-        del losses_q
-
         return loss_q.item()
+
 
     def finetuning(self, x_spt, y_spt, x_qry, y_qry):
         """
@@ -373,7 +365,7 @@ class Meta(nn.Module):
         """
         assert len(x_spt.shape) == 4
 
-        task_num = x_spt.size()[0]
+        num_task = x_spt.size()[0]
 
         # in order to not ruin the state of running_mean/variance and bn_weight/bias
         # we fine tuning on the copied model instead of self.net
@@ -405,9 +397,9 @@ class Meta(nn.Module):
             # 1. run the i-th task and compute loss for k=1~K-1
             reconstructed = net(x_spt, fast_weights, bn_training=True)
             loss = self.loss_func(reconstructed, y_spt)
-            # 2. compute grad on theta_pi
+            # 2. compute grad on theta_i
             grad = torch.autograd.grad(loss, fast_weights)
-            # 3. theta_pi = theta_pi - train_lr * grad
+            # 3. theta_i = theta_i - train_lr * grad
             fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, fast_weights)))
 
             reconstructed_q = net(x_qry, fast_weights, bn_training=True)
@@ -417,7 +409,7 @@ class Meta(nn.Module):
 
         del net
 
-        loss_q = losses_q[-1] / task_num
+        loss_q = losses_q[-1] / num_task
 
         return loss_q.item()
 
@@ -441,9 +433,9 @@ class Meta(nn.Module):
             # 1. run the i-th task and compute loss for k=1~K-1
             reconstructed = net(x_spt, fast_weights, bn_training=True)
             loss = self.loss_func(reconstructed, y_spt)
-            # 2. compute grad on theta_pi
+            # 2. compute grad on theta_i
             grad = torch.autograd.grad(loss, fast_weights)
-            # 3. theta_pi = theta_pi - train_lr * grad
+            # 3. theta_i = theta_i - train_lr * grad
             fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, fast_weights)))
             if k == self.update_step_test - 1: # Only compute the query after the last updating step and return it.
                 reconstructed_q = net(x_qry, fast_weights, bn_training=True)
