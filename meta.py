@@ -2,13 +2,12 @@ import torch
 from torch import nn
 from torch import optim
 from torch.nn import functional as F
-from torch.utils.data import TensorDataset, DataLoader
 from torch import optim
 import numpy as np
 
 from copy import deepcopy
 from models import EDSR
-from loss_functions import perceptionLoss
+from loss_functions import VGGPerceptualLoss
 
 ## Adapted from: https://github.com/dragen1860/MAML-Pytorch/
 ## All credits for the code structure goes to dragen1860.
@@ -267,12 +266,7 @@ class Meta(nn.Module):
         self.finetune_depth = finetune_param_nb
         self.net = Learner(config, load_weights)
         self.meta_optim = optim.Adam(self.net.parameters(), lr=self.meta_lr)
-        if loss_func == 'MSE':
-            self.loss_func = F.mse_loss
-        elif loss_func == 'perception':
-            self.loss_func = perceptionLoss()
-        else:
-            raise NotImplementedError
+        self.loss_func = VGGPerceptualLoss()
 
 
     def clip_grad_by_norm_(self, grad, max_norm):
