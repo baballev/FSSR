@@ -117,11 +117,11 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
         meta_learner.load_state_dict(weights)
         print('Weights loaded from %s' % load)
 
-    train_set = TaskDataset(train_fp, shots, scale, (256, 512), augment=True)
+    train_set = TaskDataset(train_fp, shots, scale, augment=True, resize=(256, 512))
     train_dl = DataLoader(train_set, batch_size=bs, num_workers=4, shuffle=True)
     print('Found %i images in training set.' % len(train_set))
 
-    valid_set = TaskDataset(valid_fp, shots, scale, (256, 512))
+    valid_set = TaskDataset(valid_fp, shots, scale, resize=(256, 512))
     valid_dl = DataLoader(valid_set, batch_size=bs, num_workers=2, shuffle=False)
     print('Found %i images in validation set.' % len(valid_set))
 

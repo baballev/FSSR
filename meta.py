@@ -32,7 +32,7 @@ class Learner(nn.Module):
             del edsr
         else:
             for i, (name, param) in enumerate(self.config):
-                if name is 'conv2d':
+                if name == 'conv2d':
                     # [ch_out, ch_in, kernelsz, kernelsz]
                     w = nn.Parameter(torch.ones(*param[:4]))
                     # gain=1 according to cbfin's implementation
@@ -41,7 +41,7 @@ class Learner(nn.Module):
                     # [ch_out]
                     self.vars.append(nn.Parameter(torch.zeros(param[0])))
 
-                elif name is 'convt2d':
+                elif name == 'convt2d':
                     # [ch_in, ch_out, kernelsz, kernelsz, stride, padding]
                     w = nn.Parameter(torch.ones(*param[:4]))
                     # gain=1 according to cbfin's implementation
@@ -50,7 +50,7 @@ class Learner(nn.Module):
                     # [ch_in, ch_out]
                     self.vars.append(nn.Parameter(torch.zeros(param[1])))
 
-                elif name is 'linear':
+                elif name == 'linear':
                     # [ch_out, ch_in]
                     w = nn.Parameter(torch.ones(*param))
                     # gain=1 according to cbfinn's implementation
@@ -59,7 +59,7 @@ class Learner(nn.Module):
                     # [ch_out]
                     self.vars.append(nn.Parameter(torch.zeros(param[0])))
 
-                elif name is 'bn':
+                elif name == 'bn':
                     # [ch_out]
                     w = nn.Parameter(torch.ones(param[0]))
                     self.vars.append(w)
@@ -71,7 +71,7 @@ class Learner(nn.Module):
                     running_var = nn.Parameter(torch.ones(param[0]), requires_grad=False)
                     self.vars_bn.extend([running_mean, running_var])
 
-                elif (name is 'resblock_leakyrelu') or (name is 'resblock_relu') :
+                elif (name == 'resblock_leakyrelu') or (name == 'resblock_relu') :
                     w1, w2 = nn.Parameter(torch.ones(*param[:4])), nn.Parameter(torch.ones(*param[:4]))
                     b1, b2 = nn.Parameter(torch.zeros(param[0])), nn.Parameter(torch.zeros(param[0]))
                     torch.nn.init.kaiming_normal_(w1)
@@ -92,37 +92,37 @@ class Learner(nn.Module):
         info = ''
 
         for name, param in self.config:
-            if name is 'conv2d':
+            if name == 'conv2d':
                 tmp = 'conv2d:(ch_in:%d, ch_out:%d, k:%dx%d, stride:%d, padding:%d)'\
                       %(param[1], param[0], param[2], param[3], param[4], param[5],)
                 info += tmp + '\n'
 
-            elif name is 'convt2d':
+            elif name == 'convt2d':
                 tmp = 'convTranspose2d:(ch_in:%d, ch_out:%d, k:%dx%d, stride:%d, padding:%d)'\
                       %(param[0], param[1], param[2], param[3], param[4], param[5],)
                 info += tmp + '\n'
 
-            elif name is 'linear':
+            elif name == 'linear':
                 tmp = 'linear:(in:%d, out:%d)'%(param[1], param[0])
                 info += tmp + '\n'
 
-            elif name is 'leakyrelu':
+            elif name == 'leakyrelu':
                 tmp = 'leakyrelu:(slope:%f)'%(param[0])
                 info += tmp + '\n'
 
-            elif name is 'avg_pool2d':
+            elif name == 'avg_pool2d':
                 tmp = 'avg_pool2d:(k:%d, stride:%d, padding:%d)'%(param[0], param[1], param[2])
                 info += tmp + '\n'
-            elif name is 'max_pool2d':
+            elif name == 'max_pool2d':
                 tmp = 'max_pool2d:(k:%d, stride:%d, padding:%d)'%(param[0], param[1], param[2])
                 info += tmp + '\n'
             elif name in ['flatten', 'tanh', 'relu', 'upsample', 'reshape', 'sigmoid', 'use_logits', 'bn']:
                 tmp = name + ':' + str(tuple(param))
                 info += tmp + '\n'
-            elif name is 'pixelshuffle':
+            elif name == 'pixelshuffle':
                 tmp = name + ':' + str((tuple(param)))
                 info += tmp + '\n'
-            elif (name is 'resblock_relu') or (name is 'resblock_leakyrelu'):
+            elif (name == 'resblock_relu') or (name == 'resblock_leakyrelu'):
                 tmp = name + ':' + str(tuple(param))
                 info += tmp + '\n'
 
@@ -150,24 +150,24 @@ class Learner(nn.Module):
         bn_idx = 0
 
         for name, param in self.config:
-            if name is 'conv2d':
+            if name == 'conv2d':
                 w, b = vars[idx], vars[idx + 1]
                 # remember to keep synchronized of forward_encoder and forward_decoder!
                 x = F.conv2d(x, w, b, stride=param[4], padding=param[5])
                 idx += 2
                 # print(name, param, '\tout:', x.shape)
-            elif name is 'convt2d':
+            elif name == 'convt2d':
                 w, b = vars[idx], vars[idx + 1]
                 # remember to keep synchronized of forward_encoder and forward_decoder!
                 x = F.conv_transpose2d(x, w, b, stride=param[4], padding=param[5])
                 idx += 2
                 # print(name, param, '\tout:', x.shape)
-            elif name is 'linear':
+            elif name == 'linear':
                 w, b = vars[idx], vars[idx + 1]
                 x = F.linear(x, w, b)
                 idx += 2
                 # print('forward:', idx, x.norm().item())
-            elif name is 'bn':
+            elif name == 'bn':
                 w, b = vars[idx], vars[idx + 1]
                 running_mean, running_var = self.vars_bn[bn_idx], self.vars_bn[bn_idx+1]
                 x = F.batch_norm(x, running_mean, running_var, weight=w, bias=b, training=bn_training)
@@ -175,29 +175,29 @@ class Learner(nn.Module):
                 bn_idx += 2
             # ToDo: Prelu (tricky cause it has parameters).
 
-            elif name is 'flatten':
+            elif name == 'flatten':
                 # print(x.shape)
                 x = x.view(x.size(0), -1)
-            elif name is 'reshape':
+            elif name == 'reshape':
                 # [b, 8] => [b, 2, 2, 2]
                 x = x.view(x.size(0), *param)
-            elif name is 'relu':
+            elif name == 'relu':
                 x = F.relu(x, inplace=param[0])
-            elif name is 'leakyrelu':
+            elif name == 'leakyrelu':
                 x = F.leaky_relu(x, negative_slope=param[0], inplace=param[1])
-            elif name is 'tanh':
+            elif name == 'tanh':
                 x = F.tanh(x)
-            elif name is 'sigmoid':
+            elif name == 'sigmoid':
                 x = torch.sigmoid(x)
-            elif name is 'upsample':
+            elif name == 'upsample':
                 x = F.upsample_nearest(x, scale_factor=param[0])
-            elif name is 'max_pool2d':
+            elif name == 'max_pool2d':
                 x = F.max_pool2d(x, param[0], param[1], param[2])
-            elif name is 'avg_pool2d':
+            elif name == 'avg_pool2d':
                 x = F.avg_pool2d(x, param[0], param[1], param[2])
-            elif name is 'pixelshuffle':
+            elif name == 'pixelshuffle':
                 x = F.pixel_shuffle(x, param[0])
-            elif name is 'resblock_leakyrelu':
+            elif name == 'resblock_leakyrelu':
                 w1, b1, w2, b2 = vars[idx], vars[idx + 1], vars[idx + 2], vars[idx + 3]
                 y = F.conv2d(x, w1, b1, stride=param[4], padding=param[5])
                 y = F.leaky_relu(y, negative_slope=param[7], inplace=param[8])
@@ -205,7 +205,7 @@ class Learner(nn.Module):
                 y = y.mul(param[6])
                 x = x.add(y)
                 idx += 4
-            elif name is 'resblock_relu':
+            elif name == 'resblock_relu':
                 w1, b1, w2, b2 = vars[idx], vars[idx + 1], vars[idx + 2], vars[idx + 3]
                 y = F.conv2d(x, w1, b1, stride=param[4], padding=param[5])
                 y = F.relu(y, inplace=param[7])
@@ -213,9 +213,9 @@ class Learner(nn.Module):
                 y = y.mul(param[6])
                 x = x.add(y)
                 idx += 4
-            elif name is 'sub_mean':
+            elif name == 'sub_mean':
                 x = F.conv2d(x, torch.eye(3).view(3,3,1,1).cuda() / torch.Tensor(param[1]).view(3, 1, 1, 1).cuda(), -1 * torch.Tensor(param[0]).cuda() / torch.Tensor(param[1]).cuda())
-            elif name is 'add_mean':
+            elif name == 'add_mean':
                 x = F.conv2d(x, torch.eye(3).view(3,3,1,1).cuda() / torch.Tensor(param[1]).view(3, 1, 1, 1).cuda(), torch.Tensor(param[0]).cuda() / torch.Tensor(param[1]).cuda())
             else:
                 raise NotImplementedError
