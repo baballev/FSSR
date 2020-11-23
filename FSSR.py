@@ -1,17 +1,13 @@
-import os,  time,  copy,  warnings, math
+import os,  time,  warnings, math
+from copy import deepcopy
+from statistics import mean
+from datetime import timedelta
 
 from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-
-# remove
-import torch.nn.functional as F
-import torchvision
-import torchvision.io
-import torchvision.transforms as transforms
-# - remove
 
 import utils
 from models import *
@@ -23,83 +19,46 @@ from loss_functions import perceptionLoss, ultimateLoss, VGGPerceptualLoss
 
 warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
-# Use GPU if available
-print('is cuda available?', torch.cuda.is_available())
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-def MAMLtrain(model, epochs_nb, trainloader, validloader, batch_size=1, verbose=True):
-    since = time.time()
-    best_model = copy.deepcopy(model.state_dict())
-    best_loss = 6500000.0
-    train_size = len(trainloader)
-    valid_size = len(validloader)
-    print("Training start", flush=True)
-
-    for epoch in range(epochs_nb):
-        # Verbose 1
-        if verbose:
-            print("Epoch [" + str(epoch + 1) + " / " + str(epochs_nb) + "]", flush=True)
-            print("-" * 10, flush=True)
-
-        # Training
-        running_loss = 0.0
-        verbose_loss = 0.0
-        for i, data in enumerate(trainloader):
-            support_data, support_label, query_data, query_label = data[0].to(device), data[1].to(device), data[2].to(
-                device), data[3].to(device) # data [ d.to(device) for d in data]
-            loss = model(support_data, support_label, query_data, query_label)
-            print('loss:', loss)
-
-            if i % 20 == 0:
-                print("Batch " + str(i) + " / " + str(int(train_size)), flush=True)
-            running_loss += loss
-            verbose_loss += loss
-            if i % 100 == 0 and i != 0:
-                print("Loss over last 100 batches: " + str(verbose_loss / (100 * batch_size)), flush=True)
-                verbose_loss = 0.0
-
-        # Verbose 2
-        if verbose:
-            epoch_loss = running_loss / (train_size * batch_size)
-            print(" ", flush=True)
-            print(" ", flush=True)
-            print("****************")
-            print('Training Loss: {:.7f}'.format(epoch_loss), flush=True)
-
-        # Validation
-        running_loss = 0.0
-        verbose_loss = 0.0
-        for i, data in enumerate(validloader):
-            support_data, support_label, query_data, query_label = data[0].to(device).squeeze(0), data[1].to(
-                device).squeeze(0), data[2].to(device), data[3].to(device) # same
-            loss = model.finetuning(support_data, support_label, query_data, query_label)
-
-            running_loss += loss
-
-        # Verbose 3
-        if verbose:
-            epoch_loss = running_loss / (valid_size * batch_size)
-            print('Validation Loss: {:.7f}'.format(epoch_loss), flush=True)
-
-        # Copy the model if it gets better with validation
-        if epoch_loss < best_loss:
-            best_loss = epoch_loss
-            best_model = copy.deepcopy(model.state_dict())
-
-    # Verbose 4
-    if verbose:
-        time_elapsed = time.time() - since
-        print("Training finished in {:.0f}m {:.0f}s".format(time_elapsed // 60, time_elapsed % 60), flush=True)
-        print("Best validation loss: " + str(best_loss), flush=True)
-
-    model.load_state_dict(best_model)  # In place anyway
-    return model  # Returning just in case
+print('Is cuda available? %s' % torch.cuda.is_available())
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 def save_model_state(state_dict, fp, verbose=True):
     torch.save(state_dict, fp)
     print('Weights saved to: %s' % fp) if verbose else 0
 
+def MAMLtrain(model, epochs, train_dl, valid_dl):
+    since = time.time()
+    best_model = deepcopy(model.state_dict())
+    best_loss = math.inf
+
+    for epoch in range(epochs):
+        print('Epoch [%i/%i]' % (epoch+ 1, epochs))
+
+        losses = []
+        for data in (t := tqdm(train_dl)):
+            x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
+            loss = model(x_spt, y_spt, x_qry, y_qry)
+            losses.append(loss)
+            t.set_description('loss: %.5f mean(%.5f)' % (loss, mean(losses)))
+
+        validation_losses = []
+        for data in (t := tqdm(valid_dl)):
+            x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
+            loss = model.finetuning(x_spt.squeeze(0), y_spt.squeeze(0), x_qry, y_qry)
+            validation_losses.append(loss)
+            t.set_description('loss: %.5f mean(%.5f)' % (loss, mean(validation_losses)))
+
+        epoch_loss = mean(validation_losses)
+        if epoch_loss < best_loss:
+            best_loss = epoch_loss
+            best_model = deepcopy(model.state_dict())
+
+    time_elapsed = time.time() - since
+    print('Training finished in %s' % timedelta(seconds=int(time_elapsed)))
+    print('Best validation loss: %.4f' % best_loss)
+
+    return best_model
 
 def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20,
     lr=0.0001, meta_lr=0.00001, save='out.pth'):
@@ -248,7 +207,7 @@ def model_train(train_path, valid_paths,                            # data
 
     def train(model, epochs, train_loader, valid_loaders, optimizer):
         since = time.time()
-        best_model = copy.deepcopy(model.state_dict())
+        best_model = deepcopy(model.state_dict())
         best_loss = math.inf
 
         for epoch in range(epochs):
@@ -285,7 +244,7 @@ def model_train(train_path, valid_paths,                            # data
             # Copy the model if it gets better with validation
             if epoch_loss < best_loss:
                 best_loss = epoch_loss
-                best_model = copy.deepcopy(model.state_dict())
+                best_model = deepcopy(model.state_dict())
 
         time_elapsed = time.time() - since
         print('Training finished in %fm %fs' % (time_elapsed//60, time_elapsed%60))
