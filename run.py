@@ -12,16 +12,16 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument('-m', '--mode', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'], required=True,
-        help="The name of the mode to run")
+        help="The name of the mode to run") # make positional arg ; replace '_' with '-' ; rename 'meta_train' to 'vanilla_train'
 
     parser.add_argument('--name',
         help='Name of the operation that is run, used for naming .log and .pt files')
 
     parser.add_argument('--device', default='cuda:0', choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda_if_available'],
-        help='Device identifier to run the process on.')
+        help='Device identifier to run the process on.') # remove
 
     parser.add_argument('--model',  default='EDSR', choices=['EDSR'],
-        help='Indicates which neural network to use.')
+        help='Indicates which neural network to use.') # remove
     parser.add_argument('--batch-size', type=int,
         help='The number of images for each training iteration as an integer.')
     parser.add_argument('--scale', type=int,
@@ -71,18 +71,17 @@ if __name__ == "__main__":
     })
 
     if opt.mode == 'meta_train':
-        meta_train(train_path=opt.train_folder,
-                   valid_path=opt.valid_folder,
-                   batch_size=opt.batch_size,
+        require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
+        summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
+        meta_train(train_fp=opt.train_folder,
+                   valid_fp=opt.valid_folders[0],
+                   load=opt.load_weights,
+                   scale=opt.scale,
+                   bs=opt.batch_size,
                    epochs=opt.epochs,
-                   learning_rate=opt.learning_rate,
-                   meta_learning_rate=opt.meta_learning_rate,
-                   save_path=opt.save_weights,
-                   verbose=opt.verbose,
-                   weights_load=opt.load_weights,
-                   loss_func=opt.loss,
-                   loss_network=opt.loss_network,
-                   network=opt.model)
+                   lr=opt.learning_rate,
+                   meta_lr=opt.meta_learning_rate,
+                   save=opt.save_weights)
 
     elif opt.mode == 'finetune_maml':
         finetuneMaml(train_path=opt.train_folder,
@@ -115,7 +114,6 @@ if __name__ == "__main__":
     elif opt.mode == 'model_train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
         summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
-
         model_train(train_path=opt.train_folder,
                     valid_paths=opt.valid_folders,
                     epochs=opt.epochs,

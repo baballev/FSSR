@@ -4,16 +4,21 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader
+
+# remove
 import torch.nn.functional as F
 import torchvision
 import torchvision.io
 import torchvision.transforms as transforms
+# - remove
 
 import utils
 from models import *
 from meta import Meta
 from finetuner import FineTuner
 from datasets.BasicDataset import BasicDataset
+from datasets.TaskDataset import TaskDataset
 from loss_functions import perceptionLoss, ultimateLoss, VGGPerceptualLoss
 
 warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
@@ -22,7 +27,6 @@ warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of
 print('is cuda available?', torch.cuda.is_available())
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-## General purpose functions
 def MAMLtrain(model, epochs_nb, trainloader, validloader, batch_size=1, verbose=True):
     since = time.time()
     best_model = copy.deepcopy(model.state_dict())
@@ -92,50 +96,40 @@ def MAMLtrain(model, epochs_nb, trainloader, validloader, batch_size=1, verbose=
     return model  # Returning just in case
 
 
-def makeCheckpoint(model, save_path, verbose=True):  # Function to save weights
-    torch.save(model.state_dict(), save_path)
-    if verbose:
-        print("Weights saved to: " + save_path, flush=True)
-    return
+def save_model_state(state_dict, fp, verbose=True):
+    torch.save(state_dict, fp)
+    print('Weights saved to: %s' % fp) if verbose else 0
 
 
-### Different Modes
-def meta_train(train_path, valid_path, batch_size, epoch_nb, learning_rate, meta_learning_rate, save_path, verbose, weights_load=None, loss_func='MSE', loss_network='vgg16', network='EDSR', num_shot=10):
+def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20,
+    lr=0.0001, meta_lr=0.00001, save='out.pth'):
 
-    ## Init training
-    scale_factor = 2
+    logger = utils.Logger('yes.log')
+    print('Running!', file=logger)
 
-    # Setup model and hyper parameters
-    if network == 'EDSR':
-        autoencoder = EDSR(scale=scale_factor)
+    autoencoder = EDSR(scale=scale)
 
-    config = autoencoder.getconfig()
+    meta_learner = Meta(autoencoder.getconfig(), update_lr=lr, meta_lr=meta_lr, update_step=10,
+        update_step_test=10).to(device)
 
-    meta_learner = Meta(config, learning_rate, meta_learning_rate, 10, 10).to(device)
+    if load:
+        weights = torch.load(load)
+        meta_learner.load_state_dict(weights)
+        print('Weights loaded from %s' % load)
 
-    transform = torchvision.transforms.Compose([transforms.ToTensor()])
+    train_set = TaskDataset(train_fp, shots, scale, (256, 512), augment=True)
+    train_dl = DataLoader(train_set, batch_size=bs, num_workers=4, shuffle=True)
+    print('Found %i images in training set.' % len(train_set))
 
-    # Data loading
-    trainset = utils.DADataset(train_path, transform=transform, num_shot=10, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor, mode='train')
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=4) # Batch must be composed of images of the same size if >1
-    print("Found " + str(len(trainloader)*batch_size) + " images in " + train_path, flush=True)
-
-    validset = utils.FSDataset(valid_path, transform=transform, is_valid_file=utils.is_file_not_corrupted, scale_factor=scale_factor, mode='train')
-    validloader = torch.utils.data.DataLoader(validset, batch_size=batch_size, shuffle=False, num_workers=0)
-    print("Found " + str(len(validloader)*batch_size) + " images in " + valid_path, flush=True)
-
-    if weights_load is not None: # Load weights for further training if a path was given.
-        meta_learner.load_state_dict(torch.load(weights_load))
-        print("Loaded weights from: " + str(weights_load), flush=True)
+    valid_set = TaskDataset(valid_fp, shots, scale, (256, 512))
+    valid_dl = DataLoader(valid_set, batch_size=bs, num_workers=2, shuffle=False)
+    print('Found %i images in validation set.' % len(valid_set))
 
     print(autoencoder, flush=True)
 
-    del autoencoder
+    meta_learner = MAMLtrain(meta_learner, epochs, train_dl, valid_dl, bs)
+    save_model_state(meta_learner.state_dict(), save)
 
-    # Start training
-    meta_learner = MAMLtrain(meta_learner, epoch_nb, trainloader, validloader, batch_size=batch_size)#, loss_func=loss_func)
-    makeCheckpoint(meta_learner, save_path)
-    return
 
 ## Upscale - Using the model
 def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verbose, device_name, benchmark=False, network='EDSR'):
@@ -228,9 +222,6 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
 
     return
 
-def save_model_state(state_dict, fp, verbose=True):
-    torch.save(state_dict, fp)
-    print('Weights saved to: %s' % fp) if verbose else 0
 
 def model_train(train_path, valid_paths,                            # data
                 load_weights=None, model_name='EDSR', scale=4,      # model
@@ -238,9 +229,9 @@ def model_train(train_path, valid_paths,                            # data
                 name='', save_weights='weights.pt', verbose=True):  # run setting
     if not name:
         if load_weights:
-            name = '%s_finetuning' % (load_weights.split('.')[0], )
+            name = '%s_finetuning' % (load_weights.split('/')[-1].split('pt')[0])
         else:
-            name ='%sx%i_training' % (model_name, scale)
+            name = '%sx%i_training' % (model_name, scale)
         name += '-%s-%ie-bs%i' % (train_path.replace('_', '-'), epochs, batch_size)
 
     logger = utils.Logger('%s.log' % name)
