@@ -10,12 +10,11 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 import utils
-from models import *
+from models import EDSR
 from meta import Meta
 from finetuner import FineTuner
-from datasets.BasicDataset import BasicDataset
-from datasets.TaskDataset import TaskDataset
-from loss_functions import perceptionLoss, ultimateLoss, VGGPerceptualLoss
+from datasets import BasicDataset, TaskDataset
+from loss_functions import VGGPerceptualLoss
 
 warnings.filterwarnings("ignore", message="torch.gels is deprecated in favour of")
 
@@ -182,10 +181,10 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
     return
 
 
-def model_train(train_path, valid_paths,                            # data
-                load_weights=None, model_name='EDSR', scale=4,      # model
-                epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
-                name='', save_weights='weights.pt', verbose=True):  # run setting
+def vanilla_train(train_path, valid_paths,                            # data
+                  load_weights=None, model_name='EDSR', scale=4,      # model
+                  epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
+                  name='', save_weights='weights.pt', verbose=True):  # run setting
 
     name = utils.construct_name(name='EDSRx%i' % scale, load=load_weights, dataset=train_path, epochs=epochs, bs=batch_size, type='vanilla')
     logger = utils.Logger(name + '.log')
