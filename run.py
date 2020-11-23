@@ -1,7 +1,7 @@
 import os
 from argparse import ArgumentParser
 
-from FSSR import meta_train, finetuneMaml, MAMLupscale, model_train, upscale
+from FSSR import meta_train, finetuneMaml, MAMLupscale, vanilla_train, upscale
 from evaluation import evaluation
 from utils import require_args, summarize_args
 
@@ -11,8 +11,8 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 if __name__ == "__main__":
     parser = ArgumentParser()
 
-    parser.add_argument('-m', '--mode', choices=['meta_train', 'meta_upscale', 'finetune_maml', 'evaluation', 'upscale_video', 'model_train', 'upscale'], required=True,
-        help="The name of the mode to run") # make positional arg ; replace '_' with '-' ; rename 'meta_train' to 'vanilla_train'
+    parser.add_argument('mode', choices=['model-train', 'meta-train', 'meta-upscale', 'finetune-maml', 'evaluation', 'upscale-video', 'upscale'],
+        help="The name of the mode to run")
 
     parser.add_argument('--name',
         help='Name of the operation that is run, used for naming .log and .pt files')
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         'load_weights': lambda x: 'loading weights?: %s %s' % (bool(x), x if x else '' ),
     })
 
-    if opt.mode == 'meta_train':
+    if opt.mode == 'meta-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
         summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
         meta_train(train_fp=opt.train_folder,
@@ -83,7 +83,7 @@ if __name__ == "__main__":
                    meta_lr=opt.meta_learning_rate,
                    save=opt.save_weights)
 
-    elif opt.mode == 'finetune_maml':
+    elif opt.mode == 'finetune-maml':
         finetuneMaml(train_path=opt.train_folder,
                      valid_path=opt.valid_folder,
                      batch_size=opt.batch_size,
@@ -95,7 +95,7 @@ if __name__ == "__main__":
                      finetune_depth=opt.finetune_depth,
                      network=opt.model)
 
-    elif opt.mode == 'meta_upscale':
+    elif opt.mode == 'meta-upscale':
         MAMLupscale(in_path=opt.input,
                     out_path=opt.output,
                     weights_path=opt.load_weights,
@@ -108,20 +108,20 @@ if __name__ == "__main__":
     elif opt.mode == 'evaluation':
         evaluation(in_path=opt.input, out_path=opt.output, verbose=True)
 
-    elif opt.mode == 'upscale_video':
+    elif opt.mode == 'upscale-video':
         pass
 
-    elif opt.mode == 'model_train':
+    elif opt.mode == 'model-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
         summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
-        model_train(train_path=opt.train_folder,
-                    valid_paths=opt.valid_folders,
-                    epochs=opt.epochs,
-                    batch_size=opt.batch_size,
-                    load_weights=opt.load_weights,
-                    save_weights=opt.save_weights,
-                    name=opt.name,
-                    scale=opt.scale)
+        vanilla_train(train_path=opt.train_folder,
+                      valid_paths=opt.valid_folders,
+                      epochs=opt.epochs,
+                      batch_size=opt.batch_size,
+                      load_weights=opt.load_weights,
+                      save_weights=opt.save_weights,
+                      name=opt.name,
+                      scale=opt.scale)
 
     elif opt.mode == 'upscale':
         upscale(load_weights=opt.load_weights, input=opt.input, out=opt.output)
