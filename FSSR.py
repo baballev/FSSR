@@ -85,8 +85,8 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     valid_dl = DataLoader(valid_set, batch_size=bs, num_workers=2, shuffle=False)
     print('Found %i images in validation set.' % len(valid_set))
 
-    meta_learner = MAMLtrain(meta_learner, epochs, train_dl, valid_dl)
-    save_model_state(meta_learner.state_dict(), save)
+    meta_learner_state_dict = MAMLtrain(meta_learner, epochs, train_dl, valid_dl)
+    save_model_state(meta_learner_state_dict, save)
 
 
 ## Upscale - Using the model
