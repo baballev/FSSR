@@ -1,5 +1,5 @@
 import os,  time,  warnings, math
-from copy import deepcopy
+import copy
 from statistics import mean
 from datetime import timedelta
 
@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-import utils
+from utils import Logger, construct_name, load_state, clone_state, save_state
 from models import EDSR
 from meta import Meta
 from finetuner import FineTuner
@@ -22,36 +22,35 @@ print('Is cuda available? %s' % torch.cuda.is_available())
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-def save_model_state(state_dict, fp, verbose=True):
-    torch.save(state_dict, fp)
-    print('Weights saved to: %s' % fp) if verbose else 0
-
-def MAMLtrain(model, epochs, train_dl, valid_dl):
+def MAMLtrain(model, epochs, train_dl, valid_dl, logs):
     since = time.time()
-    best_model = deepcopy(model.state_dict())
+    best_model = clone_state(model)
     best_loss = math.inf
 
     for epoch in range(epochs):
-        print('Epoch [%i/%i]' % (epoch+ 1, epochs))
+        print('Epoch [%i/%i]' % (epoch + 1, epochs))
 
         losses = []
         for data in (t := tqdm(train_dl)):
             x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
             loss = model(x_spt, y_spt, x_qry, y_qry)
             losses.append(loss)
-            t.set_description('loss: %.5f mean(%.5f)' % (loss, mean(losses)))
+            t.set_description('Train loss: %.5f mean(%.5f)' % (loss, mean(losses)))
+        print('Training loss: %.5f' % mean(losses), file=logs)
 
-        validation_losses = []
+        valid_losses = []
+        # It's safe without no_grad() since MAML takes care of cloning our model.
         for data in (t := tqdm(valid_dl)):
             x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
             loss = model.finetuning(x_spt.squeeze(0), y_spt.squeeze(0), x_qry, y_qry)
-            validation_losses.append(loss)
-            t.set_description('loss: %.5f mean(%.5f)' % (loss, mean(validation_losses)))
+            valid_losses.append(loss)
+            t.set_description('Validation loss: %.5f mean(%.5f)' % (loss, mean(valid_losses)))
+        print('Validation loss: %.5f' % mean(valid_losses), file=logs)
 
-        epoch_loss = mean(validation_losses)
-        if epoch_loss < best_loss:
-            best_loss = epoch_loss
-            best_model = deepcopy(model.state_dict())
+        valid_loss = mean(valid_losses)
+        if valid_loss < best_loss:
+            best_loss = valid_loss
+            best_model = clone_state(model)
 
     time_elapsed = time.time() - since
     print('Training finished in %s' % timedelta(seconds=int(time_elapsed)))
@@ -59,23 +58,21 @@ def MAMLtrain(model, epochs, train_dl, valid_dl):
 
     return best_model
 
-def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20,
-    lr=0.0001, meta_lr=0.00001, save='out.pth'):
 
-    name = utils.construct_name(name='EDSRx%i' % scale, load=load, dataset=train_fp, epochs=epochs, bs=bs, type='meta')
-    out = name + '.pth'
-    logger = utils.Logger(name + '.log')
-    print('Running -> %s <- !' % name, file=logger)
+def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20, lr=0.0001,
+    meta_lr=0.00001):
+    name = construct_name(name='EDSRx%i' % scale, load=load, dataset=train_fp, epochs=epochs,
+        bs=bs, type='meta')
+    logs = Logger(name + '.logs')
+    print('Running < %s >' % name, file=logs)
 
-    autoencoder = EDSR(scale=scale)
-
-    meta_learner = Meta(autoencoder.getconfig(), update_lr=lr, meta_lr=meta_lr, update_step=10,
+    autoencoder = EDSR(scale=scale).getconfig()
+    meta_learner = Meta(autoencoder, update_lr=lr, meta_lr=meta_lr, update_step=10,
         update_step_test=10).to(device)
 
     if load:
-        weights = torch.load(load)
-        meta_learner.load_state_dict(weights)
-        print('Weights loaded from %s' % load)
+        load_state(meta_learner, load)
+        print('Weights loaded from %s' % load, file=logs)
 
     train_set = TaskDataset(train_fp, shots, scale, augment=True, resize=(256, 512))
     train_dl = DataLoader(train_set, batch_size=bs, num_workers=4, shuffle=True)
@@ -85,11 +82,11 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     valid_dl = DataLoader(valid_set, batch_size=1, num_workers=2, shuffle=False)
     print('Found %i images in validation set.' % len(valid_set))
 
-    meta_learner_state_dict = MAMLtrain(meta_learner, epochs, train_dl, valid_dl)
-    save_model_state(meta_learner_state_dict, save)
+    meta_learner = MAMLtrain(meta_learner, epochs, train_dl, valid_dl, logs)
+    save_state(meta_learner, name + '.pth')
+    print('Saved model to %s.pth' % name, file=logs)
 
 
-## Upscale - Using the model
 def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verbose, device_name, benchmark=False, network='EDSR'):
     if device_name == "cuda_if_available":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -181,86 +178,77 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
     return
 
 
-def vanilla_train(train_path, valid_paths,                            # data
-                  load_weights=None, model_name='EDSR', scale=4,      # model
-                  epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
-                  name='', save_weights='weights.pt', verbose=True):  # run setting
+def train(model, loss_function, optimizer, epochs, train_dl, valid_dls, valid_fps, logs):
+    since = time.time()
+    best_model = clone_state(model)
+    best_loss = math.inf
 
-    name = utils.construct_name(name='EDSRx%i' % scale, load=load_weights, dataset=train_path, epochs=epochs, bs=batch_size, type='vanilla')
-    logger = utils.Logger(name + '.log')
-    # out = name + '.pth'
-    print('Running ->%s<- !' % name, file=logger)
+    for epoch in range(epochs):
+        print('Epoch [%i/%i]' % (epoch + 1, epochs))
 
-    if model_name == 'EDSR':
-        model = EDSR(scale=scale).to(device)
+        losses = []
+        for data in (t := tqdm(train_dl)):
+            x, y = [d.to(device) for d in data]
+            optimizer.zero_grad()
+            y_hat = model(x)
+            loss = loss_function(y_hat, y)
+            loss.backward()
+            optimizer.step()
+            losses.append(loss.item())
+            t.set_description('Train loss: %.5f mean(%.5f)' % (loss, mean(losses)))
+        print('Training loss: %.5f' % mean(losses), file=logs)
 
-    perception_loss =  VGGPerceptualLoss().to(device)
+        with torch.no_grad():
+            # We compute the validation loss for each validation sets.
+            for valid_dl, dl_name in zip(valid_dls, valid_fps):
+                valid_losses = []
+                for data in valid_dl:
+                    x, y = data[0].to(device), data[1].to(device)
+                    y_hat = model(x)
+                    loss = loss_function(y_hat, y)
+                    valid_losses.append(loss.item())
+            valid_loss = mean(valid_losses)
+            print('Validation loss on %s: %.4f' % (dl_name, valid_loss), file=logs)
 
-    if load_weights is not None:
-        model.load_state_dict(torch.load(load_weights))
-        print("Loaded weights from: " + str(load_weights))
+        # Will keep the best model based on the validation loss *on the last* validation set.
+        if valid_loss < best_loss:
+            best_loss = valid_loss
+            best_model = clone_state(model)
 
-    def train(model, epochs, train_loader, valid_loaders, optimizer):
-        since = time.time()
-        best_model = deepcopy(model.state_dict())
-        best_loss = math.inf
+    time_elapsed = time.time() - since
+    print('Training finished in %s' % timedelta(seconds=int(time_elapsed)))
+    print('Best validation loss: %.4f' % best_loss)
 
-        for epoch in range(epochs):
-            print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]")
+    return best_model
 
-            # Training
-            running_loss = 0.0
-            for i, data in (t := tqdm(enumerate(train_loader), total=len(train_loader))):
-                x, y = data[0].to(device), data[1].to(device)
-                optimizer.zero_grad()
-                y_hat = model(x)
-                loss = perception_loss(y_hat, y)
-                loss.backward()
-                optimizer.step()
 
-                running_loss += loss.item()
-                t.set_description('loss: %.4f' % loss.item())
+def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=0.0001):
+    name = construct_name(name='EDSRx%i' % scale, load=load, dataset=train_fp, epochs=epochs,
+        bs=bs, type='vanilla')
+    logs = Logger(name + '.logs')
+    print('Running ->%s<- !' % name, file=logs)
 
-            print('Training loss: %.4f' % (running_loss/len(train_loader)), file=logger)
+    model = EDSR(scale=scale).to(device)
+    if load:
+        load_state(model, load)
+        print('Weights loaded from %s' % load, file=logs)
 
-            # Validation
-            with torch.no_grad():
-                for valid_loader, loader_name in zip(valid_loaders, valid_paths):
-                    running_loss = 0.0
-                    for i, data in enumerate(valid_loader):
-                        x, y = data[0].to(device), data[1].to(device)
-                        y_hat = model(x)
-                        loss = perception_loss(y_hat, y)
-                        running_loss += loss.item()
+    loss_function =  VGGPerceptualLoss().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=lr, amsgrad=True)
 
-                    epoch_loss = running_loss/len(valid_loader)
-                    print('Validation loss on %s: %.4f' % (loader_name, epoch_loss), file=logger)
+    train_set = BasicDataset(train_fp, training=True, resize=(256, 512), scale_factor=scale)
+    train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
 
-            # Copy the model if it gets better with validation
-            if epoch_loss < best_loss:
-                best_loss = epoch_loss
-                best_model = deepcopy(model.state_dict())
+    valid_dls = []
+    for fp in valid_fps:
+        valid_set = BasicDataset(fp, training=False, resize=(256, 512), scale_factor=scale)
+        valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
+        valid_dls.append(valid_dl)
 
-        time_elapsed = time.time() - since
-        print('Training finished in %fm %fs' % (time_elapsed//60, time_elapsed%60))
-        print('Best validation loss: %.4f' % best_loss)
-
-        return best_model
-
-    resize = (256, 512) # force resize since we are working with batch_size > 1
-
-    train_set = BasicDataset(train_path, training=True, resize=resize, scale_factor=scale)
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
-
-    valid_loaders = []
-    for valid_path in valid_paths:
-        valid_set = BasicDataset(valid_path, training=False, resize=resize, scale_factor=scale)
-        valid_loaders.append(torch.utils.data.DataLoader(valid_set,
-            batch_size=batch_size, shuffle=True, num_workers=2))
-
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
-    best_model_state_dict = train(model, epochs, train_loader, valid_loaders, optimizer)
-    save_model_state(best_model_state_dict, save_weights)
+    model = train(model.to(device), loss_function, optimizer, epochs, train_dl, valid_dls,
+        valid_fps, logs)
+    save_state(model, name + '.pth')
+    print('Saved model to %s.pth' % name, file=logs)
 
 
 def upscale(load_weights, input, out):
@@ -297,5 +285,3 @@ def upscale(load_weights, input, out):
             label = transforms.ToPILImage(mode='RGB')(label.squeeze(0).cpu())
             label.save(os.path.join(label_path, str(i) + '.png'))
     return
-
-

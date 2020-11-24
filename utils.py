@@ -1,4 +1,5 @@
 import os, sys, imghdr
+import torch
 
 class Logger(object):
     def __init__(self, fp):
@@ -46,3 +47,17 @@ def list_directory_files(path, policy):
 
 def list_images(path):
     return list_directory_files(path, is_image)
+
+
+def save_state(state_dict, fp):
+    """Dumps the model's state to file fp."""
+    torch.save(state_dict, fp)
+
+def clone_state(model):
+    """Deep copy of the model's state."""
+    return copy.deepcopy(model.state_dict())
+
+def load_state(model, fp):
+    """Load weights located in file fp onto the model."""
+    weights = torch.load(fp)
+    model.load_state_dict(weights)
