@@ -82,7 +82,7 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     print('Found %i images in training set.' % len(train_set))
 
     valid_set = TaskDataset(valid_fp, shots, scale, resize=(256, 512))
-    valid_dl = DataLoader(valid_set, batch_size=bs, num_workers=2, shuffle=False)
+    valid_dl = DataLoader(valid_set, batch_size=1, num_workers=2, shuffle=False)
     print('Found %i images in validation set.' % len(valid_set))
 
     meta_learner_state_dict = MAMLtrain(meta_learner, epochs, train_dl, valid_dl)

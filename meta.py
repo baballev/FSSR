@@ -365,8 +365,6 @@ class Meta(nn.Module):
         """
         assert len(x_spt.shape) == 4
 
-        num_task = x_spt.size()[0]
-
         # in order to not ruin the state of running_mean/variance and bn_weight/bias
         # we fine tuning on the copied model instead of self.net
         net = deepcopy(self.net)
@@ -409,7 +407,7 @@ class Meta(nn.Module):
 
         del net
 
-        loss_q = losses_q[-1] / num_task
+        loss_q = losses_q[-1]
 
         return loss_q.item()
 
