@@ -88,8 +88,8 @@ class TaskDataset(torch.utils.data.Dataset):
         y = torch.stack([Ty(img) for img in imgs])
         x = scale(y)
 
-        y_spt, y_qry = y[:-1], y[-1:].squeeze(0)
-        x_spt, x_qry = x[:-1], x[-1:].squeeze(0)
+        y_spt, y_qry = y[:-1], y[-1]
+        x_spt, x_qry = x[:-1], x[-1]
         return x_spt, y_spt, x_qry, y_qry
 
     def __len__(self):
