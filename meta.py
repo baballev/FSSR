@@ -306,19 +306,18 @@ class Meta(nn.Module):
         losses_q = [0 for _ in range(self.update_step + 1)]  # losses_q[i] is the loss on step i
 
         for i in range(num_task):
-
-            # 1. run the i-th task and compute loss for k=0
-            reconstructed = self.net(x_spt[i], vars=None, bn_training=True)
-            loss = self.loss_func(reconstructed, y_spt[i])
-            grad = torch.autograd.grad(loss, self.net.parameters())
-            fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, self.net.parameters())))
-
             # this is the loss before first update
             with torch.no_grad():
                 # [setsz, nway]
                 reconstructed_q = self.net(x_qry, self.net.parameters(), bn_training=True)
                 loss_q = self.loss_func(reconstructed_q, y_qry)
                 losses_q[0] += loss_q
+
+            # 1. run the i-th task and compute loss for k=0
+            reconstructed = self.net(x_spt[i], vars=None, bn_training=True)
+            loss = self.loss_func(reconstructed, y_spt[i])
+            grad = torch.autograd.grad(loss, self.net.parameters())
+            fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, self.net.parameters())))
 
             # this is the loss after the first update
             with torch.no_grad():
