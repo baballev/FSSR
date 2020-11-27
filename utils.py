@@ -1,4 +1,4 @@
-import os, sys, imghdr
+import os, sys, imghdr, copy
 import torch
 
 class Logger(object):
