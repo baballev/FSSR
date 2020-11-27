@@ -368,7 +368,7 @@ class Meta(nn.Module):
         # we fine tuning on the copied model instead of self.net
         net = deepcopy(self.net)
 
-        losses_q = [0 for _ in range(self.update_step + 1)]
+        losses_q = [0 for _ in range(self.update_step_test + 1)]
 
         # 1. run the i-th task and compute loss for k=0
         reconstructed = net(x_spt)
