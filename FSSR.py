@@ -1,5 +1,4 @@
 import os,  time,  warnings, math
-import copy
 from statistics import mean
 from datetime import timedelta
 
@@ -22,7 +21,7 @@ print('Is cuda available? %s' % torch.cuda.is_available())
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-def MAMLtrain(model, epochs, train_dl, valid_dl, logs):
+def meta_train_loop(model, epochs, train_dl, valid_dl, logs):
     since = time.time()
     best_model = clone_state(model)
     best_loss = math.inf
@@ -62,9 +61,9 @@ def MAMLtrain(model, epochs, train_dl, valid_dl, logs):
 def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20, lr=0.0001,
     meta_lr=0.00001):
     name = construct_name(name='EDSRx%i' % scale, load=load, dataset=train_fp, epochs=epochs,
-        bs=bs, type='meta')
+        bs=bs, action='meta')
     logs = Logger(name + '.logs')
-    print('Running < %s >' % name, file=logs)
+    print('Running <%s>' % name, file=logs)
 
     autoencoder = EDSR(scale=scale).getconfig()
     meta_learner = Meta(autoencoder, update_lr=lr, meta_lr=meta_lr, update_step=10,
@@ -82,9 +81,36 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     valid_dl = DataLoader(valid_set, batch_size=1, num_workers=2, shuffle=False)
     print('Found %i images in validation set.' % len(valid_set))
 
-    meta_learner = MAMLtrain(meta_learner, epochs, train_dl, valid_dl, logs)
+    meta_learner = meta_train_loop(meta_learner, epochs, train_dl, valid_dl, logs)
     save_state(meta_learner, name + '.pth')
     print('Saved model to %s.pth' % name, file=logs)
+
+
+def meta_test(test_fps, load, scale, shots, lr=0.0001, update_step_test=10):
+    assert(load and scale)
+    name = construct_name(load=load, dataset=test_fps[0], epochs=update_step_test, bs=shots,
+        action='metatest')
+    logs = Logger(name + '.logs')
+    print('Running <%s>' % name, file=logs)
+
+    autoencoder = EDSR(scale=scale).getconfig()
+    model = Meta(autoencoder, update_lr=lr, meta_lr=0, update_step=0,
+        update_step_test=update_step_test).to(device)
+
+    load_state(model, load)
+
+    test_set = TaskDataset(test_fps[0], shots, scale, augment=True, resize=(256, 512))
+    test_dl = DataLoader(test_set, batch_size=1, num_workers=4, shuffle=False)
+    print('Found %i images in test set.' % len(test_set))
+
+    losses = []
+    for data in (t := tqdm(test_dl)):
+        x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
+        loss = model.finetuning(x_spt.squeeze(0), y_spt.squeeze(0), x_qry, y_qry)
+        losses.append(loss)
+        t.set_description('Current average loss %.5f' % mean(losses))
+    print('Test set losses: %s' % losses, file=logs)
+
 
 
 def MAMLupscale(in_path, out_path, weights_path, learning_rate, batch_size, verbose, device_name, benchmark=False, network='EDSR'):
@@ -178,7 +204,7 @@ def finetuneMaml(train_path, valid_path, batch_size, epoch_nb, learning_rate, me
     return
 
 
-def train(model, loss_function, optimizer, epochs, train_dl, valid_dls, valid_fps, logs):
+def vanilla_train_loop(model, loss_function, optimizer, epochs, train_dl, valid_dls, valid_fps, logs):
     since = time.time()
     best_model = clone_state(model)
     best_loss = math.inf
@@ -224,9 +250,9 @@ def train(model, loss_function, optimizer, epochs, train_dl, valid_dls, valid_fp
 
 def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=0.0001):
     name = construct_name(name='EDSRx%i' % scale, load=load, dataset=train_fp, epochs=epochs,
-        bs=bs, type='vanilla')
+        bs=bs, action='vanilla')
     logs = Logger(name + '.logs')
-    print('Running ->%s<- !' % name, file=logs)
+    print('Running <%s> !' % name, file=logs)
 
     model = EDSR(scale=scale).to(device)
     if load:
@@ -245,8 +271,8 @@ def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=
         valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
         valid_dls.append(valid_dl)
 
-    model = train(model.to(device), loss_function, optimizer, epochs, train_dl, valid_dls,
-        valid_fps, logs)
+    model = vanilla_train_loop(model.to(device), loss_function, optimizer, epochs, train_dl,
+        valid_dls, valid_fps, logs)
     save_state(model, name + '.pth')
     print('Saved model to %s.pth' % name, file=logs)
 

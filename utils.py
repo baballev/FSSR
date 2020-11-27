@@ -29,7 +29,7 @@ def summarize_args(opt, verbose):
             print(verbose[arg](getattr(opt, arg))) if arg in verbose and hasattr(opt, arg) else 0
     return summarize
 
-def construct_name(name=None, load=None, dataset='?', epochs=0, bs=0, type='?'):
+def construct_name(name=None, load=None, dataset='?', epochs=0, bs=0, action='?'):
     if load:
         fp = os.path.normpath(load)
         prefix = fp.split(os.sep)[-1].split('.pt')[0]

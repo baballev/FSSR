@@ -1,6 +1,6 @@
 """CLI runner file."""
 def main(opt, require, summarize):
-    from FSSR import vanilla_train, meta_train, finetuneMaml, MAMLupscale, upscale
+    from FSSR import vanilla_train, meta_train, meta_test, finetuneMaml, MAMLupscale, upscale
 
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
@@ -14,6 +14,11 @@ def main(opt, require, summarize):
         meta_train(train_fp=opt.train_folder, valid_fp=opt.valid_folders[0], load=opt.load_weights,
             scale=opt.scale, shots=opt.nb_shots, bs=opt.batch_size, epochs=opt.epochs,
             lr=opt.learning_rate, meta_lr=opt.meta_learning_rate)
+
+    elif opt.mode == 'meta-test':
+        require('valid_folders', 'load_weights', 'scale', 'nb_shots')
+        meta_test(test_fps=opt.valid_folders, load=opt.load_weights, scale=opt.scale,
+            shots=opt.nb_shots, lr=opt.learning_rate, update_step_test=opt.update_step_test)
 
     elif opt.mode == 'finetune-maml':
         finetuneMaml(train_path=opt.train_folder,
@@ -54,10 +59,11 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument('mode', choices=['vanilla-train', 'meta-train', 'meta-upscale', 'finetune-maml', 'evaluation', 'upscale-video', 'upscale'],
+    parser.add_argument('mode', choices=['vanilla-train', 'meta-train', 'meta-test', \
+        'meta-upscale', 'finetune-maml', 'evaluation', 'upscale-video', 'upscale'],
         help="The name of the mode to run")
 
-    parser.add_argument('--device', default='cuda:0', choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda_if_available'],
+    parser.add_argument('--device', default='cuda:0', choices=['cpu', 'cuda', 'cuda_if_available'],
         help='Device identifier to run the process on.') # remove
 
     parser.add_argument('--model',  default='EDSR', choices=['EDSR'],
@@ -70,6 +76,8 @@ if __name__ == "__main__":
         help='Number of epochs for training i.e number of times the training set is iterated over.')
     parser.add_argument('--nb-shots', default=10, type=int,
         help='Number of shots in each task.')
+    parser.add_argument('--update-step-test', default=10, type=int,
+        help='For testing sets, number of MAML finetuning steps before evaluating the loss.')
 
     parser.add_argument('--train-folder',
         help='Path to the folder containing the images of the training set.')
