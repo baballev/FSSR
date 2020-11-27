@@ -68,6 +68,8 @@ if __name__ == "__main__":
         help='The scaling factor for an upscaling task.')
     parser.add_argument('--epochs', type=int,
         help='Number of epochs for training i.e number of times the training set is iterated over.')
+    parser.add_argument('--nb-shots', default=10, type=int,
+        help='Number of shots in each task.')
 
     parser.add_argument('--train-folder',
         help='Path to the folder containing the images of the training set.')
@@ -91,6 +93,7 @@ if __name__ == "__main__":
         help="Learning rate for training with Adam optimizer. Only for 'meta_train' & 'meta_upscale' mode.")
     parser.add_argument('--meta_learning_rate', default=0.00001,
         help="Learning rate of the meta training.")
+
     parser.add_argument('--loss', default='MSE', choices=['MSE', 'perception', 'ultimate'],
         help="The loss function to use for training. Percepion loss uses a loss network that can be chosen with --loss_network arg. Only for 'train' mode.")
     parser.add_argument('--loss_network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18'],
