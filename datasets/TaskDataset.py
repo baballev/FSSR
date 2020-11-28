@@ -1,10 +1,9 @@
-import os, random
+import random
 
 import torch
-from PIL import Image
 from torchvision.transforms import Compose, ToTensor
 
-from utils import list_images
+from utils import list_images, fetch_image
 import datasets.transform as transform
 from .datasets import datasets
 
@@ -19,12 +18,9 @@ class TaskDataset(torch.utils.data.Dataset):
         self.augment = augment
         self.style = style
 
-    def fetch_image(self, index):
-        return Image.open(self.paths[index]).convert('RGB')
-
     def __getitem__(self, index):
-        imgs_indices = random.sample(range(len(self)), self.shots + 1)
-        imgs = [self.fetch_image(i) for i in imgs_indices]
+        img_paths = random.sample(self.paths, self.shots + 1)
+        imgs = [fetch_image(path) for path in img_paths]
         resized, scaled = transform.get_sizes(*self.resize, self.scale)
 
         pipeline = []

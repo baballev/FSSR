@@ -1,5 +1,7 @@
 import os, sys, imghdr, copy
+
 import torch
+from PIL import Image
 
 class Logger(object):
     def __init__(self, fp):
@@ -14,7 +16,6 @@ class Logger(object):
 
     def __del__(self):
         self.file.close()
-
 
 def require_args(opt):
     def require(*args):
@@ -48,6 +49,8 @@ def list_directory_files(path, policy):
 def list_images(path):
     return list_directory_files(path, is_image)
 
+def fetch_image(path):
+    return Image.open(path).convert('RGB')
 
 def save_state(state_dict, fp):
     """Dumps the model's state to file fp."""
