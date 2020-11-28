@@ -86,30 +86,37 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     print('Saved model to %s.pth' % name, file=logs)
 
 
-def meta_test(test_fps, load, scale, shots, lr=0.0001, update_step_test=10):
-    assert(load and scale)
-    name = construct_name(load=load, dataset=test_fps[0], epochs=update_step_test, bs=shots,
-        action='metatest')
+def models_test(test_fp, model_fps, are_meta, scale, shots, lr=0.0001, epochs=10):
+    name = construct_name(load='%s<eval>' % 'vs'.join(model_fps), dataset=test_fps,
+        epochs=epochs, bs=shots, action='test')
     logs = Logger(name + '.logs')
-    print('Running <%s>' % name, file=logs)
+    print('Testing <%s> on %s' % ('> <'.join(model_fps), test_fp), file=logs)
 
-    autoencoder = EDSR(scale=scale).getconfig()
-    model = Meta(autoencoder, update_lr=lr, meta_lr=0, update_step=0,
-        update_step_test=update_step_test).to(device)
+    config = EDSR(scale=scale).getconfig()
+    models = []
+    for is_meta, model_fp in zip(are_meta, model_fps):
+        if is_meta:
+            models.append(Meta(config, update_lr=lr, meta_lr=0, update_step=0,
+                update_step_test=epochs).to(device))
+            load_state(model, model_fp)
+        else:
+            models.append(Meta(config, update_lr=lr, meta_lr=0, update_step=0,
+                update_step_test=epochs, load_weights=model_fp).to(device))
 
-    load_state(model, load)
-
-    test_set = TaskDataset(test_fps[0], shots, scale, augment=True, resize=(256, 512))
-    test_dl = DataLoader(test_set, batch_size=1, num_workers=4, shuffle=False)
+    test_set = BasicDataset(test_fp, shots, scale, augment=True, resize=(256, 512))
+    test_dl = DataLoader(test_set, batch_size=shots, num_workers=4, shuffle=True)
     print('Found %i images in test set.' % len(test_set))
 
-    losses = []
-    for data in (t := tqdm(test_dl)):
-        x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
-        loss = model.finetuning(x_spt.squeeze(0), y_spt.squeeze(0), x_qry, y_qry)
-        losses.append(loss)
-        t.set_description('Current average loss %.5f' % mean(losses))
-    print('Test set losses: %s' % losses, file=logs)
+    losses = {name: [] for name in model_fps}
+    for data in tqdm(test_dl):
+        x, y = [d.to(device) for d in data]
+        y_spt, y_qry = y[:-1], y[-1]
+        x_spt, x_qry = x[:-1], x[-1]
+
+        for model, name in zip(models, model_fps):
+            loss = model.finetuning(x_spt, y_spt, x_qry, y_qry)
+            losses[name].append(loss)
+    print(losses, file=logs)
 
 
 
