@@ -87,7 +87,7 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
 
 
 def models_test(test_fp, model_fps, scale, shots, lr=0.0001, epochs=10):
-    name = construct_name(load='%s<eval>' % 'vs'.join(model_fps), dataset=test_fps,
+    name = construct_name(load='%s<eval>' % 'vs'.join(model_fps), dataset=test_fp,
         epochs=epochs, bs=shots, action='test')
     logs = Logger(name + '.logs')
     print('Testing <%s> on %s' % ('> <'.join(model_fps), test_fp), file=logs)
@@ -96,10 +96,12 @@ def models_test(test_fp, model_fps, scale, shots, lr=0.0001, epochs=10):
     models = []
     for model_fp in model_fps:
         if 'meta' in model_fp:
+            print('loading MAML state', model_fp)
             models.append(Meta(config, update_lr=lr, meta_lr=0, update_step=0,
                 update_step_test=epochs).to(device))
             load_state(model, model_fp)
         else:
+            print('loading EDSR state', model_fp)
             models.append(Meta(config, update_lr=lr, meta_lr=0, update_step=0,
                 update_step_test=epochs, load_weights=model_fp).to(device))
 
