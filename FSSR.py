@@ -86,7 +86,7 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     print('Saved model to %s.pth' % name, file=logs)
 
 
-def models_test(test_fp, model_fps, are_meta, scale, shots, lr=0.0001, epochs=10):
+def models_test(test_fp, model_fps, scale, shots, lr=0.0001, epochs=10):
     name = construct_name(load='%s<eval>' % 'vs'.join(model_fps), dataset=test_fps,
         epochs=epochs, bs=shots, action='test')
     logs = Logger(name + '.logs')
@@ -94,8 +94,8 @@ def models_test(test_fp, model_fps, are_meta, scale, shots, lr=0.0001, epochs=10
 
     config = EDSR(scale=scale).getconfig()
     models = []
-    for is_meta, model_fp in zip(are_meta, model_fps):
-        if is_meta:
+    for model_fp in model_fps:
+        if 'meta' in model_fp:
             models.append(Meta(config, update_lr=lr, meta_lr=0, update_step=0,
                 update_step_test=epochs).to(device))
             load_state(model, model_fp)
