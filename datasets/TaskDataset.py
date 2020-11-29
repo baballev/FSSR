@@ -10,7 +10,7 @@ from .datasets import datasets
 class TaskDataset(torch.utils.data.Dataset):
     """Style-based task segmentation of the dataset."""
 
-    def __init__(self, fp, shots, scale, augment=True, style=False, resize=None):
+    def __init__(self, fp, shots, scale, augment=True, style=True, resize=None):
         self.paths = list_images(datasets[fp] if fp in datasets else fp)
         self.resize = resize
         self.scale = scale

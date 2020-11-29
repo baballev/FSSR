@@ -73,11 +73,11 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
         load_state(meta_learner, load)
         print('Weights loaded from %s' % load, file=logs)
 
-    train_set = TaskDataset(train_fp, shots, scale, augment=True, resize=(256, 512))
+    train_set = TaskDataset(train_fp, shots, scale, augment=True, style=True, resize=(256, 512))
     train_dl = DataLoader(train_set, batch_size=bs, num_workers=4, shuffle=True)
     print('Found %i images in training set.' % len(train_set))
 
-    valid_set = TaskDataset(valid_fp, shots, scale, resize=(256, 512))
+    valid_set = TaskDataset(valid_fp, shots, scale, augment=False, style=True, resize=(256, 512))
     valid_dl = DataLoader(valid_set, batch_size=1, num_workers=2, shuffle=False)
     print('Found %i images in validation set.' % len(valid_set))
 
@@ -103,7 +103,7 @@ def models_test(test_fp, model_fps, are_meta, scale, shots, lr=0.0001, epochs=10
             models.append(Meta(config, update_lr=lr, meta_lr=0, update_step=0,
                 update_step_test=epochs, load_weights=model_fp).to(device))
 
-    test_set = BasicDataset(test_fp, shots, scale, augment=True, resize=(256, 512))
+    test_set = BasicDataset(test_fp, scale, augment=False, style=False, resize=(256, 512))
     test_dl = DataLoader(test_set, batch_size=shots, num_workers=4, shuffle=True)
     print('Found %i images in test set.' % len(test_set))
 
@@ -269,12 +269,12 @@ def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=
     loss_function =  VGGPerceptualLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, amsgrad=True)
 
-    train_set = BasicDataset(train_fp, training=True, resize=(256, 512), scale_factor=scale)
+    train_set = BasicDataset(train_fp, scale, augment=True, style=True, resize=(256, 512))
     train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
 
     valid_dls = []
     for fp in valid_fps:
-        valid_set = BasicDataset(fp, training=False, resize=(256, 512), scale_factor=scale)
+        valid_set = BasicDataset(fp, scale, training=False, style=True, resize=(256, 512))
         valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
         valid_dls.append(valid_dl)
 
