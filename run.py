@@ -22,7 +22,7 @@ def main(opt, require, summarize):
     elif opt.mode == 'models-test':
         require('valid_folders', 'models', 'scale', 'nb_shots')
         models_test(test_fp=opt.valid_folders[0], model_fps=opt.models, scale=opt.scale,
-            shots=opt.nb_shots, lr=opt.learning_rate, epochs=opt.epochs):
+            shots=opt.nb_shots, lr=opt.learning_rate, epochs=opt.epochs)
 
     elif opt.mode == 'finetune-maml':
         finetuneMaml(train_path=opt.train_folder,

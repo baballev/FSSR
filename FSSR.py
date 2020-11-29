@@ -274,7 +274,7 @@ def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=
 
     valid_dls = []
     for fp in valid_fps:
-        valid_set = BasicDataset(fp, scale, training=False, style=True, resize=(256, 512))
+        valid_set = BasicDataset(fp, scale, augment=False, style=True, resize=(256, 512))
         valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
         valid_dls.append(valid_dl)
 
