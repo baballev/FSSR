@@ -96,14 +96,12 @@ def models_test(test_fp, model_fps, scale, shots, lr=0.0001, epochs=10):
     models = []
     for model_fp in model_fps:
         if 'meta' in model_fp:
-            print('loading MAML state', model_fp)
-            models.append(Meta(config, update_lr=lr, meta_lr=0, update_step=0,
-                update_step_test=epochs).to(device))
+            model = Meta(config, update_lr=lr, meta_lr=0, update_step=0, update_step_test=epochs)
             load_state(model, model_fp)
         else:
-            print('loading EDSR state', model_fp)
-            models.append(Meta(config, update_lr=lr, meta_lr=0, update_step=0,
-                update_step_test=epochs, load_weights=model_fp).to(device))
+            model = Meta(config, update_lr=lr, meta_lr=0, update_step=0, update_step_test=epochs,
+                load_weights=model_fp)
+        models.append(model.to(device))
 
     test_set = BasicDataset(test_fp, scale, augment=False, style=False, resize=(256, 512))
     test_dl = DataLoader(test_set, batch_size=shots, num_workers=4, shuffle=True)

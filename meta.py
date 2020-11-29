@@ -26,7 +26,7 @@ class Learner(nn.Module):
         self.vars_bn = nn.ParameterList()
 
         if load_weights != '':
-            edsr = EDSR()
+            edsr = EDSR(scale=8) # not good idea...
             edsr.load_state_dict(torch.load(load_weights))
             self.vars = nn.ParameterList([param for name, param in edsr.named_parameters() if not(name.startswith('sub') or name.startswith('add'))])
             del edsr
