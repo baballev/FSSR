@@ -1,10 +1,7 @@
 from torch.utils.data import Dataset
-
 import datasets.transform as t
 from .datasets import datasets
 from utils import list_images, fetch_image
-
-from time import time
 
 class BasicDataset(Dataset):
     """Single image dataset."""
@@ -17,12 +14,14 @@ class BasicDataset(Dataset):
         self.pipeline = t.Pipeline()
         if augment:
             self.pipeline.add(t.augment(augment))
-        if style:
-            self.pipeline.add(t.style_filter())
 
     def __getitem__(self, index):
         img = fetch_image(self.paths[index])
         resized, scaled = t.get_sizes(*self.resize, self.scale)
+
+        if style:
+            self.pipeline.add(t.style_filter())
+
         base = self.pipeline(img)
         x, y = t.resize(scaled)(base), t.resize(resized)(base)
         return x, y

@@ -1,11 +1,10 @@
 import random
 
 import torch
-from torchvision.transforms import Compose, ToTensor
 
-from utils import list_images, fetch_image
-import datasets.transform as transform
+import datasets.transform as t
 from .datasets import datasets
+from utils import list_images, fetch_image
 
 class TaskDataset(torch.utils.data.Dataset):
     """Style-based task segmentation of the dataset."""
@@ -15,25 +14,23 @@ class TaskDataset(torch.utils.data.Dataset):
         self.resize = resize
         self.scale = scale
         self.shots = shots
-        self.augment = augment
         self.style = style
+
+        self.pipeline = t.Pipeline()
+        if augment:
+            self.pipeline.add(t.augment(augment))
 
     def __getitem__(self, index):
         img_paths = random.sample(self.paths, self.shots + 1)
         imgs = [fetch_image(path) for path in img_paths]
-        resized, scaled = transform.get_sizes(*self.resize, self.scale)
+        resized, scaled = t.get_sizes(*self.resize, self.scale)
 
-        pipeline = []
-        if self.augment:
-            pipeline.append(transform.augment())
         if self.style:
-            pipeline.append(transform.style_filter())
-        pipeline += [transform.resize(resized), ToTensor()]
-        scale = transform.resize(scaled)
+            self.pipeline.add(t.style_filter())
 
-        T = Compose(pipeline)
-        y = torch.stack([T(img) for img in imgs])
-        x = scale(y)
+        bases = [self.pipeline(img) for img in imgs]
+        y = torch.stack([t.resize(resized)(m) for m in bases])
+        x = torch.stack([t.resize(scaled)(m) for m in bases])
 
         y_spt, y_qry = y[:-1], y[-1]
         x_spt, x_qry = x[:-1], x[-1]

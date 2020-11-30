@@ -73,7 +73,7 @@ def style_filter():
 def resize(size):
     return T.Compose([
         T.Resize(size, interpolation=Image.BICUBIC),
-        T.ToTensor()
+        T.ToTensor(),
     ])
 
 class Pipeline:
