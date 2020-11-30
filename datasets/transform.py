@@ -71,4 +71,7 @@ def style_filter():
     ])
 
 def resize(size):
-    return T.Resize(size, interpolation=Image.BICUBIC)
+    return T.Compose([
+        T.Resize(size, interpolation=Image.BICUBIC),
+        T.ToTensor()
+    ])

@@ -2,9 +2,6 @@ import os,  time,  warnings, math
 from statistics import mean
 from datetime import timedelta
 
-from copy import deepcopy
-import utils
-
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -286,87 +283,6 @@ def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=
     save_state(model, name + '.pth')
     print('Saved model to %s.pth' % name, file=logs)
 
-
-def model_train(train_path, valid_paths,                            # data
-                load_weights=None, model_name='EDSR', scale=4,      # model
-                epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
-                name='', save_weights='weights.pt', verbose=True):  # run setting
-
-    name = utils.construct_name(name='EDSRx%i' % scale, load=load_weights, dataset=train_path, epochs=epochs, bs=batch_size, action='zzzanilla')
-    logger = utils.Logger(name + '.log')
-    # out = name + '.pth'
-    print('Running ->%s<- !' % name, file=logger)
-
-    if model_name == 'EDSR':
-        model = EDSR(scale=scale).to(device)
-
-    perception_loss =  VGGPerceptualLoss().to(device)
-
-    if load_weights is not None:
-        model.load_state_dict(torch.load(load_weights))
-        print("Loaded weights from: " + str(load_weights))
-
-    def train(model, epochs, train_loader, valid_loaders, optimizer):
-        since = time.time()
-        best_model = deepcopy(model.state_dict())
-        best_loss = math.inf
-
-        for epoch in range(epochs):
-            print("Epoch [" + str(epoch+1) + " / " + str(epochs) + "]")
-
-            # Training
-            running_loss = 0.0
-            for i, data in (t := tqdm(enumerate(train_loader), total=len(train_loader))):
-                x, y = data[0].to(device), data[1].to(device)
-                optimizer.zero_grad()
-                y_hat = model(x)
-                loss = perception_loss(y_hat, y)
-                loss.backward()
-                optimizer.step()
-
-                running_loss += loss.item()
-                t.set_description('loss: %.4f' % loss.item())
-
-            print('Training loss: %.4f' % (running_loss/len(train_loader)), file=logger)
-
-            # Validation
-            with torch.no_grad():
-                for valid_loader, loader_name in zip(valid_loaders, valid_paths):
-                    running_loss = 0.0
-                    for i, data in enumerate(valid_loader):
-                        x, y = data[0].to(device), data[1].to(device)
-                        y_hat = model(x)
-                        loss = perception_loss(y_hat, y)
-                        running_loss += loss.item()
-
-                    epoch_loss = running_loss/len(valid_loader)
-                    print('Validation loss on %s: %.4f' % (loader_name, epoch_loss), file=logger)
-
-            # Copy the model if it gets better with validation
-            if epoch_loss < best_loss:
-                best_loss = epoch_loss
-                best_model = deepcopy(model.state_dict())
-
-        time_elapsed = time.time() - since
-        print('Training finished in %fm %fs' % (time_elapsed//60, time_elapsed%60))
-        print('Best validation loss: %.4f' % best_loss)
-
-        return best_model
-
-    resize = (256, 512) # force resize since we are working with batch_size > 1
-
-    train_set = BasicDataset(train_path, training=True, resize=resize, scale_factor=scale)
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
-
-    valid_loaders = []
-    for valid_path in valid_paths:
-        valid_set = BasicDataset(valid_path, training=False, resize=resize, scale_factor=scale)
-        valid_loaders.append(torch.utils.data.DataLoader(valid_set,
-            batch_size=batch_size, shuffle=True, num_workers=2))
-
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True)
-    best_model_state_dict = train(model, epochs, train_loader, valid_loaders, optimizer)
-    save_model_state(best_model_state_dict, save_weights)
 
 def upscale(load_weights, input, out):
     edsr = EDSR().to(device)

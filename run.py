@@ -5,17 +5,11 @@ def main(opt, require, summarize):
     # requirements -> ok
     # summarize will not show the defaults assigned by the function call
     # models:l89 "# ToDo: faire des stats sur le dataset pour + accurate mean"
-    print('running')
-    require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
-    summarize('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
-    model_train(train_path=opt.train_folder,
-                valid_paths=opt.valid_folders,
-                epochs=opt.epochs,
-                batch_size=opt.batch_size,
-                load_weights=opt.load_weights,
-                save_weights=opt.save_weights,
-                scale=opt.scale)
-    return True
+    # improve logging: line by line then dump the array of losses in logger
+    # verify that datase opt.train_folder, opt.valid_folders is in the folder same for opt.models?
+    # difficulties since Augmentor + Styles (<- this one is way too much for vanilla)
+    # EDSR's paper says train from scratch x2 then converge, and then use to train x n
+    # L1 over PerceptionLoss ?? for training
 
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
