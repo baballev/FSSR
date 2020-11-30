@@ -278,7 +278,7 @@ def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=
         valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
         valid_dls.append(valid_dl)
 
-    model = vanilla_train_loop(model.to(device), loss_function, optimizer, epochs, train_dl,
+    model = vanilla_train_loop(model, loss_function, optimizer, epochs, train_dl,
         valid_dls, valid_fps, logs)
     save_state(model, name + '.pth')
     print('Saved model to %s.pth' % name, file=logs)
