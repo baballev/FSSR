@@ -75,3 +75,12 @@ def resize(size):
         T.Resize(size, interpolation=Image.BICUBIC),
         T.ToTensor()
     ])
+
+class Pipeline:
+    transforms = []
+
+    def __call__(self, x):
+        return T.Compose(self.transforms)(x)
+
+    def add(self, transform):
+        self.transforms.append(transform)

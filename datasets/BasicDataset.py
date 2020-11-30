@@ -1,5 +1,4 @@
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose
 
 import datasets.transform as t
 from .datasets import datasets
@@ -19,15 +18,14 @@ class BasicDataset(Dataset):
         img = fetch_image(self.paths[index])
         resized, scaled = t.get_sizes(*self.resize, self.scale)
 
-        pipeline = []
+        pipeline = t.Pipeline()
         if self.augment:
-            pipeline.append(t.augment(self.augment))
+            pipeline.add(t.augment(self.augment))
         if self.style:
-            pipeline.append(t.style_filter())
+            pipeline.add(t.style_filter())
 
-        base = Compose(pipeline)(img)
-        x_resize, y_resize = t.resize(scaled), t.resize(resized)
-        x, y = x_resize(base), y_resize(base)
+        base = pipeline(img)
+        x, y = t.resize(scaled)(base), t.resize(resized)(base)
         return x, y
 
     def __len__(self):
