@@ -5,6 +5,17 @@ def main(opt, require, summarize):
     # requirements -> ok
     # summarize will not show the defaults assigned by the function call
     # models:l89 "# ToDo: faire des stats sur le dataset pour + accurate mean"
+    print('running')
+    require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
+    summarize('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
+    model_train(train_path=opt.train_folder,
+                valid_paths=opt.valid_folders,
+                epochs=opt.epochs,
+                batch_size=opt.batch_size,
+                load_weights=opt.load_weights,
+                save_weights=opt.save_weights,
+                scale=opt.scale)
+    return True
 
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
