@@ -2,6 +2,9 @@ import os,  time,  warnings, math
 from statistics import mean
 from datetime import timedelta
 
+from copy import deepcopy
+import utils
+
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -289,7 +292,7 @@ def model_train(train_path, valid_paths,                            # data
                 epochs=10, learning_rate=0.0001, batch_size=16,     # hyper-params
                 name='', save_weights='weights.pt', verbose=True):  # run setting
 
-    name = utils.construct_name(name='EDSRx%i' % scale, load=load_weights, dataset=train_path, epochs=epochs, bs=batch_size, type='vanilla')
+    name = utils.construct_name(name='EDSRx%i' % scale, load=load_weights, dataset=train_path, epochs=epochs, bs=batch_size, action='zzzanilla')
     logger = utils.Logger(name + '.log')
     # out = name + '.pth'
     print('Running ->%s<- !' % name, file=logger)

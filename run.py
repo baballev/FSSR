@@ -1,6 +1,6 @@
 """CLI runner file."""
 def main(opt, require, summarize):
-    from FSSR import vanilla_train, meta_train, models_test, finetuneMaml, MAMLupscale, upscale
+    from FSSR import model_train, vanilla_train, meta_train, models_test, finetuneMaml, MAMLupscale, upscale
 
     # requirements -> ok
     # summarize will not show the defaults assigned by the function call
