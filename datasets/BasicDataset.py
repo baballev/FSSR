@@ -10,6 +10,7 @@ class BasicDataset(Dataset):
         self.paths = list_images(datasets[fp] if fp in datasets else fp)
         self.resize = resize
         self.scale = scale
+        self.style = style
 
         self.pipeline = t.Pipeline()
         if augment:
@@ -19,7 +20,7 @@ class BasicDataset(Dataset):
         img = fetch_image(self.paths[index])
         resized, scaled = t.get_sizes(*self.resize, self.scale)
 
-        if style:
+        if self.style:
             self.pipeline.add(t.style_filter())
 
         base = self.pipeline(img)
