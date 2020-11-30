@@ -77,7 +77,7 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
     train_dl = DataLoader(train_set, batch_size=bs, num_workers=4, shuffle=True)
     print('Found %i images in training set.' % len(train_set))
 
-    valid_set = TaskDataset(valid_fp, shots, scale, augment=False, style=True, resize=(256, 512))
+    valid_set = TaskDataset(valid_fp, shots, scale, augment=False, style=False, resize=(256, 512))
     valid_dl = DataLoader(valid_set, batch_size=1, num_workers=2, shuffle=False)
     print('Found %i images in validation set.' % len(valid_set))
 
@@ -114,7 +114,7 @@ def models_test(test_fp, model_fps, scale, shots, lr=0.0001, epochs=10):
         x_spt, x_qry = x[:-1], x[-1]
 
         for model, name in zip(models, model_fps):
-            loss = model.finetuning(x_spt, y_spt, x_qry, y_qry)
+            loss = model.finetuning(x_spt, y_spt, x_qry, y_qry, return_all=True)
             losses[name].append(loss)
     print(losses, file=logs)
 
@@ -240,8 +240,8 @@ def vanilla_train_loop(model, loss_function, optimizer, epochs, train_dl, valid_
                     y_hat = model(x)
                     loss = loss_function(y_hat, y)
                     valid_losses.append(loss.item())
-            valid_loss = mean(valid_losses)
-            print('Validation loss on %s: %.4f' % (dl_name, valid_loss), file=logs)
+                valid_loss = mean(valid_losses)
+                print('Validation loss on %s: %.4f' % (dl_name, valid_loss), file=logs)
 
         # Will keep the best model based on the validation loss *on the last* validation set.
         if valid_loss < best_loss:
@@ -269,7 +269,7 @@ def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=
     loss_function =  VGGPerceptualLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, amsgrad=True)
 
-    train_set = BasicDataset(train_fp, scale, augment=True, style=True, resize=(256, 512))
+    train_set = BasicDataset(train_fp, scale, augment='torchvision', style=False, resize=(256, 512))
     train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
 
     valid_dls = []

@@ -43,14 +43,25 @@ class RandomGrayscale(T.RandomGrayscale):
         return img
 
 
-def augment():
-    p = Augmentor.Pipeline()
-    p.rotate(probability=1, max_left_rotation=5, max_right_rotation=5)
-    p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
-    p.flip_left_right(probability=0.5)
-    p.zoom_random(probability=0.5, percentage_area=0.8)
-    p.flip_top_bottom(probability=0.3)
-    return p.torch_transform()
+def augment(library):
+    if library == 'torchvision':
+        return T.Compose([
+            T.RandomPerspective(),
+            T.RandomRotation((-15, 15)),
+            T.RandomResizedCrop((256, 512), scale=(0.5, 0.9), interpolation=Image.BICUBIC),
+            T.RandomHorizontalFlip(0.3),
+            T.RandomVerticalFlip(0.3)
+        ])
+    elif library == 'augmentor':
+        p = Augmentor.Pipeline()
+        p.rotate(probability=1, max_left_rotation=5, max_right_rotation=5)
+        p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
+        p.flip_left_right(probability=0.5)
+        p.zoom_random(probability=0.5, percentage_area=0.8)
+        p.flip_top_bottom(probability=0.3)
+        return p.torch_transform()
+    else:
+        raise NotImplementedError
 
 
 def style_filter():

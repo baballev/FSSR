@@ -21,7 +21,7 @@ class BasicDataset(Dataset):
 
         pipeline = []
         if self.augment:
-            pipeline.append(transform.augment())
+            pipeline.append(transform.augment(self.augment))
         if self.style:
             pipeline.append(transform.style_filter())
         pipeline += [transform.resize(resized), ToTensor()]
