@@ -11,20 +11,19 @@ class BasicDataset(Dataset):
         self.resize = resize
         self.scale = scale
         self.style = style
-
-        self.pipeline = t.Pipeline()
-        if augment:
-            self.pipeline.add(t.augment(augment))
+        self.augment = t.augment(augment) if augment else None
 
     def __getitem__(self, index):
         img = fetch_image(self.paths[index])
         resized, scaled = t.get_sizes(*self.resize, self.scale)
 
+        pipeline = t.Pipeline()
+        if self.augment:
+            pipeline.add(self.augment)
         if self.style:
-            self.pipeline.add(t.style_filter())
+            pipeline.add(t.style_filter())
 
-        base = self.pipeline(img)
-        self.pipeline.pop()
+        base = pipeline(img)
         x, y = t.resize(scaled)(base), t.resize(resized)(base)
         return x, y
 
