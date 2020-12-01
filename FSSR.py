@@ -34,8 +34,8 @@ def meta_train_loop(model, epochs, train_dl, valid_dl, logs):
             x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
             loss = model(x_spt, y_spt, x_qry, y_qry)
             losses.append(loss)
-            t.set_description('Train loss: %.5f mean(%.5f)' % (loss, mean(losses)))
-        print('Training loss: %.5f' % mean(losses), file=logs)
+            t.set_description('Train loss: %.4f mean(%.4f)' % (loss, mean(losses)))
+        print('Training loss: %.4f' % mean(losses), file=logs)
 
         valid_losses = []
         # It's safe without no_grad() since MAML takes care of cloning our model.
@@ -43,7 +43,7 @@ def meta_train_loop(model, epochs, train_dl, valid_dl, logs):
             x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
             loss = model.finetuning(x_spt.squeeze(0), y_spt.squeeze(0), x_qry, y_qry)
             valid_losses.append(loss)
-            t.set_description('Validation loss: %.5f mean(%.5f)' % (loss, mean(valid_losses)))
+            t.set_description('Validation loss: %.4f mean(%.4f)' % (loss, mean(valid_losses)))
         print('Validation loss: %.5f' % mean(valid_losses), file=logs)
 
         valid_loss = mean(valid_losses)
@@ -73,7 +73,7 @@ def meta_train(train_fp, valid_fp, load=None, scale=8, shots=10, bs=1, epochs=20
         load_state(meta_learner, load)
         print('Weights loaded from %s' % load, file=logs)
 
-    train_set = TaskDataset(train_fp, shots, scale, augment=True, style=True, resize=(256, 512))
+    train_set = TaskDataset(train_fp, shots, scale, augment='augmentor', style=True, resize=(256, 512))
     train_dl = DataLoader(train_set, batch_size=bs, num_workers=4, shuffle=True)
     print('Found %i images in training set.' % len(train_set))
 

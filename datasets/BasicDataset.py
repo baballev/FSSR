@@ -24,6 +24,7 @@ class BasicDataset(Dataset):
             self.pipeline.add(t.style_filter())
 
         base = self.pipeline(img)
+        self.pipeline.pop()
         x, y = t.resize(scaled)(base), t.resize(resized)(base)
         return x, y
 

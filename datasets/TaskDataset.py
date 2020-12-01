@@ -29,6 +29,7 @@ class TaskDataset(torch.utils.data.Dataset):
             self.pipeline.add(t.style_filter())
 
         bases = [self.pipeline(img) for img in imgs]
+        self.pipeline.pop()
         y = torch.stack([t.resize(resized)(m) for m in bases])
         x = torch.stack([t.resize(scaled)(m) for m in bases])
 
