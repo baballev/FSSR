@@ -10,3 +10,4 @@ local
 __pycache__
 .*
 *.pth
+*.txt
