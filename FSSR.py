@@ -2,6 +2,7 @@ import os,  time,  warnings, math
 from statistics import mean
 from datetime import timedelta
 
+import wandb
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -241,6 +242,7 @@ def vanilla_train_loop(model, loss_function, optimizer, epochs, train_dl, valid_
                     loss = loss_function(y_hat, y)
                     valid_losses.append(loss.item())
                 valid_loss = mean(valid_losses)
+                wandb.log({'loss', mean(losses)})
                 print('Validation loss on %s: %.4f' % (dl_name, valid_loss), file=logs)
 
         # Will keep the best model based on the validation loss *on the last* validation set.
@@ -265,6 +267,11 @@ def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=
     if load:
         load_state(model, load)
         print('Weights loaded from %s' % load, file=logs)
+
+    wandb.init(project='tester!')
+    config = wandb.config
+    config.learning_rate = 0.0001
+    wandb.watch(model)
 
     loss_function =  VGGPerceptualLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, amsgrad=True)
