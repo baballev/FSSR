@@ -15,21 +15,20 @@ class TaskDataset(torch.utils.data.Dataset):
         self.scale = scale
         self.shots = shots
         self.style = style
-
-        self.pipeline = t.Pipeline()
-        if augment:
-            self.pipeline.add(t.augment(augment))
+        self.augment = t.augment(augment) if augment else None
 
     def __getitem__(self, index):
         img_paths = random.sample(self.paths, self.shots + 1)
         imgs = [fetch_image(path) for path in img_paths]
         resized, scaled = t.get_sizes(*self.resize, self.scale)
 
+        pipeline = t.Pipeline()
+        if self.augment:
+            pipeline.add(self.augment)
         if self.style:
-            self.pipeline.add(t.style_filter())
+            pipeline.add(t.style_filter())
 
-        bases = [self.pipeline(img) for img in imgs]
-        self.pipeline.pop()
+        bases = [pipeline(img) for img in imgs]
         y = torch.stack([t.resize(resized)(m) for m in bases])
         x = torch.stack([t.resize(scaled)(m) for m in bases])
 

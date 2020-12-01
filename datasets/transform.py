@@ -84,6 +84,3 @@ class Pipeline:
 
     def add(self, transform):
         self.transforms.append(transform)
-
-    def pop(self):
-        self.transforms.pop(-1)
