@@ -5,7 +5,7 @@ from PIL import Image
 
 class Logger(object):
     def __init__(self, fp):
-        self.file = open(fp, 'a')
+        self.file = open(fp, 'w', buffering=1)
 
     def write(self, str):
         sys.stdout.write(str)
