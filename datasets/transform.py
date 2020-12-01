@@ -77,10 +77,14 @@ def resize(size):
     ])
 
 class Pipeline:
-    transforms = []
+    def __init__(self):
+        self.transforms = []
 
     def __call__(self, x):
         return T.Compose(self.transforms)(x)
 
     def add(self, transform):
         self.transforms.append(transform)
+
+    def __len__(self):
+        return len(self.transforms)

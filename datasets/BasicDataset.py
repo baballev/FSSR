@@ -16,14 +16,14 @@ class BasicDataset(Dataset):
     def __getitem__(self, index):
         img = fetch_image(self.paths[index])
         resized, scaled = t.get_sizes(*self.resize, self.scale)
-
-        pipeline = t.Pipeline()
+        
+        p = t.Pipeline()
         if self.augment:
-            pipeline.add(self.augment)
+            p.add(self.augment)
         if self.style:
-            pipeline.add(t.style_filter())
+            p.add(t.style_filter())
+        base = p(img)
 
-        base = pipeline(img)
         x, y = t.resize(scaled)(base), t.resize(resized)(base)
         return x, y
 

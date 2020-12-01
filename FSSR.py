@@ -2,7 +2,7 @@ import os,  time,  warnings, math
 from statistics import mean
 from datetime import timedelta
 
-# import wandb
+import wandb
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -22,6 +22,7 @@ print('Is cuda available? %s' % torch.cuda.is_available())
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
+import torchvision.transforms as T
 def meta_train_loop(model, epochs, train_dl, valid_dl, logs):
     since = time.time()
     best_model = clone_state(model)
@@ -226,6 +227,7 @@ def vanilla_train_loop(model, loss_function, optimizer, epochs, train_dl, valid_
             optimizer.zero_grad()
             y_hat = model(x)
             loss = loss_function(y_hat, y)
+            #wandb.log({'example': wandb.Image(T.ToPILImage(mode='RGB')(x[0]), caption='input')})
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
@@ -268,16 +270,16 @@ def vanilla_train(train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=
         load_state(model, load)
         print('Weights loaded from %s' % load, file=logs)
 
-    # wandb.init(project='tester!')
-    # config = wandb.config
-    # config.learning_rate = 0.0001
-    # wandb.watch(model)
+    #wandb.init(project='tester!')
+    #config = wandb.config
+    #config.learning_rate = 0.0001
+    #wandb.watch(model)
 
     loss_function =  VGGPerceptualLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, amsgrad=True)
 
-    train_set = BasicDataset(train_fp, scale, augment='augmentor', style=False, resize=(256, 512))
-    train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
+    train_set = BasicDataset(train_fp, scale, augment='augmentor', style=True, resize=(256, 512))
+    train_dl = DataLoader(train_set, batch_size=bs, shuffle=False, num_workers=4)
 
     valid_dls = []
     for fp in valid_fps:

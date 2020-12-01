@@ -11,6 +11,10 @@ def main(opt, require, summarize):
     # EDSR's paper says train from scratch x2 then converge, and then use to train x n
     # L1 over PerceptionLoss ?? for training
 
+    # 1) revisit everything so we have wandb logging + loss output in file + weights saved in fs
+    # 2) train DIV2Kx2 (validation w/ w/out styles) train DIV2Kx2 styles (validation w/ w/out styles)
+    # 3) train a meta network: how many epochs??
+
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
         summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
