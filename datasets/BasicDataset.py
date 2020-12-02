@@ -7,6 +7,7 @@ class BasicDataset(Dataset):
     """Single image dataset."""
 
     def __init__(self, fp, scale, augment=True, style=False, resize=None):
+        self.name = fp
         self.paths = list_images(datasets[fp] if fp in datasets else fp)
         self.resize = resize
         self.scale = scale

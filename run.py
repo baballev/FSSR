@@ -20,9 +20,7 @@ def main(opt, require, summarize):
     require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
     run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders,
         load=opt.load_weights, scale=opt.scale, bs=opt.batch_size, epochs=opt.epochs,
-        lr=opt.learning_rate, resize=(256, 512), loss='VGG')
-
-    print(run)
+        lr=opt.learning_rate, resize=(256, 512), loss='vgg')
 
     run()
 

@@ -21,7 +21,7 @@ class VanillaTrain:
     def __init__(self, train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=0.0001,
         resize=(256, 512), loss='L1'):
         self.epochs = epochs
-        self.model = EDSR(scale=scale)#.to(device)
+        self.model = EDSR(scale=scale).to(device)
 
         if load:
             load_state(self.model, load)
@@ -49,17 +49,18 @@ class VanillaTrain:
 
         # logging
         self.name = construct_name('EDSRx%i' % scale, load, self.train_dl_name, epochs, bs, 'vanilla-train')
-        self.logs = Logger(name + '.log')
         self.repr = 'train set        -> %s \n' % self.train_dl_name \
                   + 'valid sets       -> %s \n' % self.valid_dl_names \
-                  + 'finetuning       -> %s %s \n' % ('from %s' % x if x else 'False') \
+                  + 'finetuning       -> %s \n' % ('from %s' % load if load else 'False') \
                   + 'scale factor     -> %s \n' % scale \
                   + 'batch size       -> %s \n' % bs \
                   + 'number of epochs -> %s \n' % self.epochs \
                   + 'learning rate    -> %s \n' % lr \
                   + 'loss function    -> %s \n' % loss
 
-        wandb.init(project='tester!', name=self.name, notes=self.str, config={
+        print(self)
+
+        wandb.init(project='tester!', name=self.name, notes=self.repr, config={
             'train_set': self.train_dl_name,
             'model': 'EDSRx%i' % scale,
             'finetuning': load,
@@ -68,18 +69,20 @@ class VanillaTrain:
 
     def __call__(self):
         wandb.watch(self.model)
+        self.logs = Logger(self.name + '.logs')
+        
         since = time.time()
-        best_model = clone_state(model)
+        best_model = clone_state(self.model)
         best_loss = math.inf
 
         train_losses, valid_losses = [], []
         for epoch in range(self.epochs):
             print('Epoch %i/%i' % (epoch + 1, self.epochs))
-            avg_loss = self.train()
-            train_losses.append(avg_loss)
+            train_loss = self.train()
+            train_losses.append(train_loss)
 
             valid_loss = self.validate()
-            valid_losses.append(avg_loss)
+            valid_losses.append(valid_loss)
 
             eval_loss = mean(valid_loss)
             if eval_loss < best_loss:
@@ -87,13 +90,12 @@ class VanillaTrain:
                 best_model = clone_state(self.model)
 
         since = time.time() - since
-        print('Training finished in %s' % timedelta(seconds=int(time_elapsed)))
-        print('train_loss_%s: %s' % (self.train_dl_name, train_losses), file=self.logs)
+        print('Summary of training: finished in %s' % timedelta(seconds=int(since)), file=self.logs)
+        print('train_loss(%s): %s' % (self.train_dl_name, [round(x, 4) for x in train_losses]), file=self.logs)
         for dl_name, dl_losses in zip(self.valid_dl_names, zip(*valid_losses)):
-            print('train_loss_%s: %s' % (dl_name, dl_losses))
+            print('valid_loss(%s): %s' % (dl_name, [round(x, 4) for x in dl_losses]), file=self.logs)
 
-        return best_model
-
+        save_state(best_model, self.name + '.pth')
 
     def train(self):
         losses = []
@@ -102,18 +104,18 @@ class VanillaTrain:
             self.optim.zero_grad()
             y_hat = self.model(x)
             loss = self.loss(y_hat, y)
-            self.loss.backward()
+            loss.backward()
             self.optim.step()
 
             losses.append(loss.item())
             wandb.log({'train_loss_%s' % self.train_dl_name: loss})
             t.set_description('Train loss: %.4f (~%.4f)' % (loss, mean(losses)))
-        print('train_loss_%s: %.4f' % (self.train_dl_name, mean(losses)))
+        #print('train_loss(%s): %.4f' % (self.train_dl_name, mean(losses)))
         return mean(losses)
-
 
     @torch.no_grad()
     def validate(self):
+        valid_losses = []
         for valid_dl, dl_name in zip(self.valid_dls, self.valid_dl_names):
             losses = []
             for data in valid_dl:
@@ -122,9 +124,10 @@ class VanillaTrain:
                 loss = self.loss(y_hat, y)
                 losses.append(loss.item())
             valid_loss = mean(losses)
-            wandb.log({'valid_loss_%s' % dl_name: mean(losses)})
-            print('valid_loss_%s: %.4f' % (dl_name, mean(losses)))
-
+            valid_losses.append(valid_loss)
+            wandb.log({'valid_loss_%s' % dl_name: valid_loss})
+            print('valid_loss(%s): %.4f' % (dl_name, valid_loss))
+        return valid_losses
 
     def __str__(self):
         return self.repr
