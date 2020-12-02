@@ -20,7 +20,7 @@ def main(opt, require, summarize):
     require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
     run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders,
         load=opt.load_weights, scale=opt.scale, bs=opt.batch_size, epochs=opt.epochs,
-        lr=opt.learning_rate, resize=(256, 512), loss='vgg')
+        lr=opt.learning_rate, size=(256, 512), loss=opt.loss)
 
     run()
 
@@ -87,47 +87,37 @@ if __name__ == "__main__":
         'meta-upscale', 'finetune-maml', 'evaluation', 'upscale-video', 'upscale'],
         help="The name of the mode to run")
 
-    parser.add_argument('--device', default='cuda:0', choices=['cpu', 'cuda', 'cuda_if_available'],
-        help='Device identifier to run the process on.') # remove
-
-    parser.add_argument('--model',  default='EDSR', choices=['EDSR'],
-        help='Indicates which neural network to use.') # remove
     parser.add_argument('--batch-size', type=int,
         help='The number of images for each training iteration as an integer.')
     parser.add_argument('--scale', type=int,
         help='The scaling factor for an upscaling task.')
     parser.add_argument('--epochs', type=int,
         help='Number of epochs for training i.e number of times the training set is iterated over.')
-        # help='For --models-test, will be the number of finetuning steps.')
     parser.add_argument('--nb-shots', default=10, type=int,
         help='Number of shots in each task.')
-
-    parser.add_argument('--models', nargs='+', type=str)
+    parser.add_argument('--loss', default='L1', choices=['VGG', 'L1', 'L2'],
+        help="Loss function used for training")
     parser.add_argument('--train-folder',
-        help='Path to the folder containing the images of the training set.')
+        help='Dataset preset name name or path training set directory.')
     parser.add_argument('--valid-folders', nargs='+', type=str,
-        help='Path to the folder containing the images of the validation set. Can be multiple paths.')
+        help='Dataset preset name name or path validation set directory.')
     parser.add_argument('--load-weights',
-        help='Path to the weights to continue training, perform upscaling or evaluate performance.')
-    parser.add_argument('--save-weights',
-        help='Path to save the weights after training (.pt).')
+        help='Path to the weight file for finetuning.')
+    parser.add_argument('--learning-rate', default=0.0001, type=float,
+        help="Learning rate for training with Adam optimizer.")
 
     # ~todo
+    parser.add_argument('--models', nargs='+', type=str)
+    parser.add_argument('--save-weights',
+        help='Path to save the weights after training (.pt).')
     parser.add_argument('--input', default='../CelebA/', # '../../../../mnt/data/prim_project/dataset/FSSR/CelebA/'
         help="Path to the directory containing the images to upscale. Only used for upscaling or evaluation.")
     parser.add_argument('--output', default='./out/',
         help="Destination directory for the benchmark in 'evaluation' mode or upscaled images in 'upscale' mode.")
-
     parser.add_argument('--verbose', default=True, type=bool, choices=[True, False],
         help="Whether the script print info in stdout.")
-
-    parser.add_argument('--learning_rate', default=0.0001, type=float,
-        help="Learning rate for training with Adam optimizer. Only for 'meta_train' & 'meta_upscale' mode.")
     parser.add_argument('--meta_learning_rate', default=0.00001,
         help="Learning rate of the meta training.")
-
-    parser.add_argument('--loss', default='MSE', choices=['MSE', 'perception', 'ultimate'],
-        help="The loss function to use for training. Percepion loss uses a loss network that can be chosen with --loss_network arg. Only for 'train' mode.")
     parser.add_argument('--loss_network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18'],
         help="The loss network used for perceptual loss computing. Only for 'train' mode")
     parser.add_argument('--finetune_depth', default=0, type=int,

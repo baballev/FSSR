@@ -4,16 +4,15 @@ from PIL import Image
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 
-def get_sizes(height, width, scale):
+def get_sizes(size, scale):
     """
     Parameters
     ---
-        width: width of the image
-        height: height of the image
-        limit: limits the total number of pixels in the input image
-        resize: tuple(w,h) forces to resize the image to those values
+        size: size of the image height*width
+        # limit: limits the total number of pixels in the input image
+        scale: scale factor applied to HR image
     """
-    resized_height, resized_width = height, width
+    resized_height, resized_width = size
     resized_height -= resized_height % scale
     resized_width -= resized_width % scale
     return (resized_height, resized_width), (resized_height // scale, resized_width // scale)
@@ -64,11 +63,9 @@ def augment(library):
         raise NotImplementedError
 
 
-def style_filter():
-    return T.Compose([
-        ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        # RandomGrayscale(p=0.02, num_channels=3),
-    ])
+def style_filter(b, c, s, h):
+    # RandomGrayscale(p=0.02, num_channels=3),
+    return ColorJitter(brightness=b, contrast=c, saturation=s, hue=h)
 
 def resize(size):
     return T.Compose([
