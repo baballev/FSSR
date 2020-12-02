@@ -1,6 +1,6 @@
 """CLI runner file."""
 def main(opt, require, summarize):
-    from FSSR import vanilla_train, meta_train, models_test, finetuneMaml, MAMLupscale, upscale
+    # from FSSR import vanilla_train, meta_train, models_test, finetuneMaml, MAMLupscale, upscale
 
     # requirements -> ok
     # summarize will not show the defaults assigned by the function call
@@ -15,7 +15,20 @@ def main(opt, require, summarize):
     # 2) train DIV2Kx2 (validation w/ w/out styles) train DIV2Kx2 styles (validation w/ w/out styles)
     # 3) train a meta network: how many epochs??
 
-    if opt.mode == 'vanilla-train':
+    from FSSR import VanillaTrain
+
+    require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
+    run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders,
+        load=opt.load_weights, scale=opt.scale, bs=opt.batch_size, epochs=opt.epochs,
+        lr=opt.learning_rate, resize=(256, 512), loss='VGG')
+
+    print(run)
+
+    run()
+
+    return 1
+
+    """if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
         summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
         vanilla_train(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
@@ -63,7 +76,7 @@ def main(opt, require, summarize):
         pass
 
     elif opt.mode == 'upscale':
-        upscale(load_weights=opt.load_weights, input=opt.input, out=opt.output)
+        upscale(load_weights=opt.load_weights, input=opt.input, out=opt.output)"""
 
 
 if __name__ == "__main__":
