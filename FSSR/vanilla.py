@@ -70,7 +70,8 @@ class VanillaTrain:
     def __call__(self):
         wandb.watch(self.model)
         self.logs = Logger(self.name + '.logs')
-        
+       
+        print('testing logger', file=self.logs)
         since = time.time()
         best_model = clone_state(self.model)
         best_loss = math.inf
@@ -86,7 +87,7 @@ class VanillaTrain:
 
             eval_loss = mean(valid_loss)
             if eval_loss < best_loss:
-                best_loss = valid_loss
+                best_loss = eval_loss
                 best_model = clone_state(self.model)
 
         since = time.time() - since
