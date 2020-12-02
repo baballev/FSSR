@@ -36,7 +36,7 @@ class VanillaTrain:
             self.loss = VGGPerceptualLoss().to(device)
         elif loss == 'L2':
             self.loss = F.mse_loss
-        elif loss == 'L1'
+        elif loss == 'L1':
             self.loss = F.l1_loss
         else:
             raise NotImplementedError('loss function %s not found' % loss)
@@ -46,7 +46,7 @@ class VanillaTrain:
         self.train_set_str = str(train_set)
         self.train_set_repr = repr(train_set)
 
-        self.valid_dls, self.valids_sets_str, self.valids_sets_repr = [], [], []
+        self.valid_dls, self.valid_sets_str, self.valid_sets_repr = [], [], []
         for valid_fp in valid_fps:
             valid_set = BasicDataset.preset(valid_fp, scale, size)
             valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
@@ -60,9 +60,9 @@ class VanillaTrain:
     def __call__(self):
         wandb.init(project='tester!', name=self.name, notes=str(self), config={
             'train_set': self.train_set_str,
-            'model': 'EDSRx%i' % scale,
-            'finetuning': load,
-            'batch_size': bs,
+            'model': 'EDSRx%i' % self.scale,
+            'finetuning': self.load,
+            'batch_size': self.bs,
         })
 
         wandb.watch(self.model)
@@ -131,8 +131,8 @@ class VanillaTrain:
 
     def __repr__(self):
         string = 'train set: \n   %s \n' % self.train_set_repr \
-               + 'valid sets: \n   ' \
-               +  ''.join(['%s \n' % s[2] for s in self.valid_sets_repr]) \
+               + 'valid sets: \n' \
+               +  ''.join(['   %s \n' % s for s in self.valid_sets_repr]) \
                + 'finetuning: %s \n' % ('from %s' % self.load if self.load else 'False') \
                + 'scale factor: %s \n' % self.scale \
                + 'batch size: %s \n' % self.bs \

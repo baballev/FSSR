@@ -1,16 +1,7 @@
 """CLI runner file."""
 def main(opt, require, summarize):
     # from FSSR import vanilla_train, meta_train, models_test, finetuneMaml, MAMLupscale, upscale
-
-    # requirements -> ok
-    # summarize will not show the defaults assigned by the function call
-    # models:l89 "# ToDo: faire des stats sur le dataset pour + accurate mean"
-    # improve logging: line by line then dump the array of losses in logger
-    # verify that datase opt.train_folder, opt.valid_folders is in the folder same for opt.models?
-    # difficulties since Augmentor + Styles (<- this one is way too much for vanilla)
-    # EDSR's paper says train from scratch x2 then converge, and then use to train x n
-    # L1 over PerceptionLoss ?? for training
-
+    
     # 1) revisit everything so we have wandb logging + loss output in file + weights saved in fs
     # 2) train DIV2Kx2 (validation w/ w/out styles) train DIV2Kx2 styles (validation w/ w/out styles)
     # 3) train a meta network: how many epochs??
