@@ -1,12 +1,14 @@
-import torch
+"""
+    Credits go to the following gist for the content of this file:
+    https://https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49
+"""
+
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-# credit goes to github.com/alper111
-class VGGPerceptualLoss(nn.Module):
+class VGGLoss(nn.Module):
     def __init__(self):
         super(VGGPerceptualLoss, self).__init__()
         vgg16 = torchvision.models.vgg16(pretrained=True).features
@@ -17,8 +19,8 @@ class VGGPerceptualLoss(nn.Module):
 
         self.blocks = nn.ModuleList(blocks)
         self.transform = F.interpolate
-        self.mean = nn.Parameter(torch.tensor([0.485, 0.456, 0.406], device='cuda').view(1,3,1,1)) # try removing device
-        self.std = nn.Parameter(torch.tensor([0.229, 0.224, 0.225], device='cuda').view(1,3,1,1))
+        self.mean = nn.Parameter(torch.tensor([0.485, 0.456, 0.406]).view(1,3,1,1))
+        self.std = nn.Parameter(torch.tensor([0.229, 0.224, 0.225]).view(1,3,1,1))
 
     def forward(self, y_hat, y):
         y_hat = (y_hat-self.mean) / self.std
