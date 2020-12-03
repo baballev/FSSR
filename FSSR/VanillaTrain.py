@@ -1,80 +1,54 @@
-import os,  time,  warnings, math
+import time, math
 from statistics import mean
 from datetime import timedelta
 
 import wandb
-from tqdm import tqdm
 import torch
+from tqdm import tqdm
 import torch.optim as optim
-from torch.utils.data import DataLoader
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 from utils import Logger, construct_name, load_state, clone_state, save_state
-from models import EDSR
-from meta import Meta
-from datasets import BasicDataset
-from loss_functions import VGGPerceptualLoss
+from model import EDSR, VGGLoss
+from dataset import BasicDataset
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-class VanillaTrain:
-    def __init__(self, train_fp, valid_fps, load=None, scale=8, bs=16, epochs=20, lr=0.0001,
-        size=(256, 512), loss='L1'):
-        self.epochs = epochs
-        self.scale = scale
-        self.load = load
-        self.bs = bs
-        self.lr = lr
-        self.loss_name = loss
-        self.model = EDSR(scale=scale).to(device)
-        self.optim = optim.Adam(self.model.parameters(), lr=lr, amsgrad=True)
+class MetaLearner:
+    def __init__(self, train_fp, valid_fp, load=None, scale=2, shots=10, bs=1, epochs=20,
+        lr=0.0001, meta_lr=0.00001):
 
+        self.model = EDSR(n_resblocks=16, n_feats=64, scale=4).to(device) #r16f64x2
         if load:
             load_state(self.model, load)
 
-        if loss == 'VGG':
-            self.loss = VGGPerceptualLoss().to(device)
-        elif loss == 'L2':
-            self.loss = F.mse_loss
-        elif loss == 'L1':
-            self.loss = F.l1_loss
-        else:
-            raise NotImplementedError('loss function %s not found' % loss)
+        self.optim = optim.Adam(self.model.parameters(), lr=lr, amsgrad=True)
+        self.loss = Loss.get(loss).to(device)
 
         train_set = BasicDataset.preset(train_fp, scale, size)
         self.train_dl = DataLoader(train_set, batch_size=bs, shuffle=False, num_workers=4)
-        self.train_set_str = str(train_set)
-        self.train_set_repr = repr(train_set)
 
-        self.valid_dls, self.valid_sets_str, self.valid_sets_repr = [], [], []
+        self.valid_dls = []
         for valid_fp in valid_fps:
             valid_set = BasicDataset.preset(valid_fp, scale, size)
             valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
             self.valid_dls.append(valid_dl)
-            self.valid_sets_str.append(str(valid_set))
-            self.valid_sets_repr.append(repr(valid_set))
 
-        self.name = construct_name('EDSRx%i' % scale, load, self.train_set_str, epochs, bs, 'vanilla')
-        print(repr(self))
+        self.summarize(load, scale, bs, lr, loss, n_resblocks, n_feats)
 
-    def __call__(self):
-        wandb.init(project='tester!', name=self.name, notes=str(self), config={
-            'train_set': self.train_set_str,
-            'model': 'EDSRx%i' % self.scale,
-            'finetuning': self.load,
-            'batch_size': self.bs,
-        })
 
+    def __call__(self, epochs):
+        wandb.init(project='tester!', name=self.name, notes=self.repr, config=self.config)
         wandb.watch(self.model)
         self.logs = Logger(self.name + '.logs')
 
-        since = time.time()
         best_model = clone_state(self.model)
         best_loss = math.inf
 
         train_losses, valid_losses = [], []
-        for epoch in range(self.epochs):
-            print('Epoch %i/%i' % (epoch + 1, self.epochs))
+        for epoch in range(epochs):
+            print('Epoch %i/%i' % (epoch + 1, epochs))
             train_loss = self.train()
             train_losses.append(train_loss)
 
@@ -86,16 +60,13 @@ class VanillaTrain:
                 best_loss = eval_loss
                 best_model = clone_state(self.model)
 
-        since = time.time() - since
-        print('Summary of training: finished in %s' \
-            % timedelta(seconds=int(since)), file=self.logs)
         print('train_loss(%s): %s' \
             % (self.train_set_str, [round(x, 4) for x in train_losses]), file=self.logs)
         for name, losses in zip(self.valid_sets_str, zip(*valid_losses)):
             print('valid_loss(%s): %s' \
                 % (name, [round(x, 4) for x in losses]), file=self.logs)
+        save_state(best_model, '%s_%i].pth' % (self.name, epochs))
 
-        save_state(best_model, self.name + '.pth')
 
     def train(self):
         losses = []
@@ -111,6 +82,7 @@ class VanillaTrain:
             wandb.log({'train_loss_%s' % self.train_set_str: loss})
             t.set_description('Train loss: %.4f (~%.4f)' % (loss, mean(losses)))
         return mean(losses)
+
 
     @torch.no_grad()
     def validate(self):
@@ -129,14 +101,26 @@ class VanillaTrain:
             print('valid_loss(%s): %.4f' % (name, valid_loss))
         return valid_losses
 
+
+    def summarize(self, load, scale, bs, lr, loss, n_resblocks, n_feats):
+        self.name = construct_name(name='EDSR-r%if%ix%i' % (scale, n_resblocks, n_feats),
+            load=load, dataset=str(train_set), bs=bs, action='vanilla')
+
+        self.config = {
+            'dataset': self.train_set_str,
+            'model': 'EDSRx%i' % scale,
+            'finetuning': load,
+            'batch_size': bs,
+        }
+
+        self.repr = 'train set: \n   %s \n' % repr(self.train_dl) \
+                  + 'valid sets: \n' \
+                  +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
+                  + 'finetuning: %s \n' % ('from %s' % load if load else 'False') \
+                  + 'scale factor: %s \n' % scale \
+                  + 'batch size: %s \n' % bs \
+                  + 'learning rate: %s \n' % lr \
+                  + 'loss function: %s \n' % loss
+
     def __repr__(self):
-        string = 'train set: \n   %s \n' % self.train_set_repr \
-               + 'valid sets: \n' \
-               +  ''.join(['   %s \n' % s for s in self.valid_sets_repr]) \
-               + 'finetuning: %s \n' % ('from %s' % self.load if self.load else 'False') \
-               + 'scale factor: %s \n' % self.scale \
-               + 'batch size: %s \n' % self.bs \
-               + 'number of epochs: %s \n' % self.epochs \
-               + 'learning rate: %s \n' % self.lr \
-               + 'loss function: %s \n' % self.loss_name
-        return string
+        return self.repr

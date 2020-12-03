@@ -1,3 +1,3 @@
-from .vanilla import VanillaTrain
+from .VanillaTrain import VanillaTrain
 
 __all__ = ['VanillaTrain']
