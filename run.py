@@ -1,7 +1,7 @@
 """CLI runner file."""
 def main(opt, require, summarize):
     # from FSSR import vanilla_train, meta_train, models_test, finetuneMaml, MAMLupscale, upscale
-    
+
     # 1) revisit everything so we have wandb logging + loss output in file + weights saved in fs
     # 2) train DIV2Kx2 (validation w/ w/out styles) train DIV2Kx2 styles (validation w/ w/out styles)
     # 3) train a meta network: how many epochs??
@@ -9,11 +9,10 @@ def main(opt, require, summarize):
     from FSSR import VanillaTrain
 
     require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
-    run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders,
-        load=opt.load_weights, scale=opt.scale, bs=opt.batch_size, epochs=opt.epochs,
-        lr=opt.learning_rate, size=(256, 512), loss=opt.loss)
+    run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
+        scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss)
 
-    run()
+    run(epochs=opt.epochs)
 
     return 1
 
