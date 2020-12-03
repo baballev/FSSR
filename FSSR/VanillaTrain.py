@@ -15,7 +15,7 @@ from dataset import BasicDataset
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-class MetaLearner:
+class VanillaTrain:
     def __init__(self, train_fp, valid_fp, load=None, scale=2, shots=10, bs=1, epochs=20,
         lr=0.0001, meta_lr=0.00001):
 
