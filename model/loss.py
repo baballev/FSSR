@@ -33,3 +33,15 @@ class VGGLoss(nn.Module):
             y_hat, y = block(y_hat), block(y)
             loss += F.l1_loss(y_hat, y)
         return loss
+
+
+def Loss():
+    @staticmethod
+    get(name):
+        if loss == 'VGG':
+            return VGGPerceptualLoss()
+        if loss == 'L2':
+            return F.mse_loss
+        if loss == 'L1':
+            return F.l1_loss
+        raise NotImplementedError('loss function %s not found' % loss)
