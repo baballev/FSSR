@@ -16,10 +16,9 @@ from dataset import BasicDataset
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class VanillaTrain:
-    def __init__(self, train_fp, valid_fp, load=None, scale=2, shots=10, bs=1, epochs=20,
-        lr=0.0001, meta_lr=0.00001):
+    def __init__(self, train_fp, valid_fp, load=None, scale=2, bs=1, size=(256, 512), loss='L1'):
 
-        self.model = EDSR(n_resblocks=16, n_feats=64, scale=4).to(device) #r16f64x2
+        self.model = EDSR(n_resblocks=16, n_feats=64, scale=4).to(device)
         if load:
             load_state(self.model, load)
 
