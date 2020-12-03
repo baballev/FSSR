@@ -1,7 +1,7 @@
 import os
 
 from torch.utils.data import Dataset
-import datasets.transform as t
+import dataset.transform as t
 from .datasets import datasets
 from utils import list_images, fetch_image
 

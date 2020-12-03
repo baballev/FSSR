@@ -34,11 +34,11 @@ class VGGLoss(nn.Module):
         return loss
 
 
-def Loss():
+class Loss:
     @staticmethod
-    get(name):
+    def get(loss, device):
         if loss == 'VGG':
-            return VGGPerceptualLoss()
+            return VGGPerceptualLoss().to(device)
         if loss == 'L2':
             return F.mse_loss
         if loss == 'L1':

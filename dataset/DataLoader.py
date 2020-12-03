@@ -1,6 +1,6 @@
 import torch.utils.data
 
-class DataLoader(data.DataLoader):
+class DataLoader(torch.utils.data.DataLoader):
     def __str__(self):
         return str(self.dataset)
 

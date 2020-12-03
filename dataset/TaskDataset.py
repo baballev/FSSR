@@ -2,7 +2,7 @@ import random
 
 import torch
 
-import datasets.transform as t
+import dataset.transform as t
 from .datasets import datasets
 from utils import list_images, fetch_image
 
