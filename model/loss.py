@@ -1,14 +1,13 @@
-"""
-    Credits go to the following gist for the content of this file:
-    https://https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49
-"""
-
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
 
 class VGGLoss(nn.Module):
+    """
+    Credits go to the following gist for the content of this file:
+    https://https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49
+    """
     def __init__(self):
         super(VGGPerceptualLoss, self).__init__()
         vgg16 = torchvision.models.vgg16(pretrained=True).features

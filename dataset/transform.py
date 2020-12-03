@@ -21,7 +21,7 @@ def get_sizes(size, scale):
 class ColorJitter(T.ColorJitter):
     """Wrapper on torchvision.transforms.ColorJitter to set the transform params on init."""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super(ColorJitter, self).__init__(**kwargs)
         # beware torchvision=0.9's get_params will probably return the params and not a compose
         self.transform = self.get_params(self.brightness, self.contrast, self.saturation, self.hue)
 
@@ -32,7 +32,7 @@ class ColorJitter(T.ColorJitter):
 class RandomGrayscale(T.RandomGrayscale):
     """Wrapper on torchvision.transforms.RandomGrayscale to set the probability on init."""
     def __init__(self, num_channels, **kwargs):
-        super().__init__(**kwargs)
+        super(RandomGrayscale, self).__init__(**kwargs)
         self.num_channels = num_channels
         self.grayscaled = torch.rand(1) < self.p
 
