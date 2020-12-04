@@ -13,18 +13,18 @@ from dataset import TaskDataset, BasicDataset, DataLoader
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class MetaTrain:
-    def __init__(self, train_fp, valid_fp, load=None, scale=2, shots=10, bs=1,
-        lr=0.0001, meta_lr=0.00001, size=(256, 512), loss='L1', n_resblocks=16, n_feats=64):
+    def __init__(self, train_fp, valid_fps, load=None, scale=2, shots=10, bs=1,
+        lr=0.001, meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=8, n_feats=64):
 
         model = EDSR(n_resblocks, n_feats, scale)
         if load:
             load_state(model, load)
 
-        self.model = MAML(model, lr=meta_lr).to(device)
+        self.model = MAML(model, lr=meta_lr, first_order=True, allow_nograd=True).to(device)
         self.optim = optim.SGD(self.model.parameters(), lr=lr)
         self.loss = Loss.get(loss, device)
 
-        train_set = TaskDataset.preset(train_fp, scale, size, shots)
+        train_set = TaskDataset.preset(train_fp, scale=scale, size=size, shots=shots)
         self.train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
 
         self.valid_dls = []
@@ -38,8 +38,8 @@ class MetaTrain:
 
     def __call__(self, epochs, update_steps):
         name = '%s_e%i_u%i].pth' % (self.name, epochs, update_steps)
-        wandb.init(project='tester!', name=name, notes=self.repr)
-        wandb.watch(self.model)
+        # wandb.init(project='tester!', name=name, notes=self.repr)
+        # wandb.watch(self.model)
         self.logs = Logger(name + '.logs')
 
         best_model = clone_state(self.model)
@@ -71,20 +71,27 @@ class MetaTrain:
     def train(self, update_steps):
         # losses = []
         for data in (t := tqdm(self.train_dl)):
+            x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
+            # print('\n', x_spt.shape, y_spt.shape, x_qry.shape, y_qry.shape)
             losses_q = 0
-            for i in range(update_steps):
-                x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
-
-                cloned = self.model.clone()
-                y_spt_hat = cloned(x_spt)
-                loss = self.loss(y_spt_hat, y_spt)
-                print('support loss (y_spt_hat vs y_spt) = %.4f' % loss)
+            i = 0
+            cloned = self.model.clone()
+            import pdb; pdb.set_trace()
+            for k in range(update_steps):
+                y_spt_hat = cloned(x_spt[i])
+                loss = self.loss(y_spt_hat, y_spt[i])
+                print('\nsupport loss = %.5f' % loss)
                 cloned.adapt(loss)
+                loss_a = self.loss(cloned(x_spt[i]), y_spt[i])
+                print('support loss after = %.5f' % loss_a)                
 
-                y_qry_hat = cloned(x_qry)
-                loss_q = self.loss(y_qry_hat, y_qry)
-                print('query loss (y_qry_hat vs y_qry) = %.4f' % loss_q)
+                y_qry_hat = cloned(x_qry[i])
+                loss_q = self.loss(y_qry_hat, y_qry[i])
+                print('query loss (y_qry_hat vs y_qry) = %.5f' % loss_q)
                 losses_q += loss_q
+                
+                del y_spt_hat
+                del y_qry_hat   
 
             self.optim.zero_grad()
             losses_q.backward()
@@ -115,7 +122,7 @@ class MetaTrain:
 
 
     def summarize(self, load, scale, bs, lr, meta_lr, shots, loss, n_resblocks, n_feats):
-        self.name = construct_name(name='EDSR-r%if%ix%i' % (scale, n_resblocks, n_feats),
+        self.name = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
             load=load, dataset=str(self.train_dl), bs=bs, action='meta')
 
         self.repr = 'train set: \n   %s \n' % repr(self.train_dl) \

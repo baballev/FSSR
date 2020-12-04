@@ -17,9 +17,9 @@ def main(opt, require, summarize):
 
     if opt.mode == 'meta-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
-        run = MetaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights
+        run = MetaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
             scale=opt.scale, shots=opt.nb_shots, bs=opt.batch_size, lr=opt.learning_rate,
-            meta_lr=.opt.meta_learning_rate, loss=opt.loss)
+            meta_lr=opt.meta_learning_rate, loss=opt.loss)
 
         run(epochs=opt.epochs, update_steps=opt.update_steps)
 
@@ -100,10 +100,12 @@ if __name__ == "__main__":
         help='Dataset preset name name or path validation set directory.')
     parser.add_argument('--load-weights',
         help='Path to the weight file for finetuning.')
-    parser.add_argument('--learning-rate', default=0.0001, type=float,
+    parser.add_argument('--learning-rate', default=0.001, type=float,
         help='Learning rate for training.')
-    parser.add_argument('--meta_learning_rate', default=0.00001, type=float,
+    parser.add_argument('--meta-learning-rate', default=0.0001, type=float,
         help='Learning rate of the meta training.')
+    parser.add_argument('--update-steps', default=10, type=int,
+        help='For meta-learning: number of gradient updates performed on each tasks.')
 
     # ~todo
     parser.add_argument('--models', nargs='+', type=str)

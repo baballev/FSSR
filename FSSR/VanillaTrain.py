@@ -23,12 +23,12 @@ class VanillaTrain:
         self.optim = optim.Adam(self.model.parameters(), lr=lr, amsgrad=True)
         self.loss = Loss.get(loss, device)
 
-        train_set = BasicDataset.preset(train_fp, scale, size)
+        train_set = BasicDataset.preset(train_fp, scale=scale, size=size)
         self.train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
 
         self.valid_dls = []
         for valid_fp in valid_fps:
-            valid_set = BasicDataset.preset(valid_fp, scale, size)
+            valid_set = BasicDataset.preset(valid_fp, scale=scale, size=size)
             valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
             self.valid_dls.append(valid_dl)
 
@@ -101,7 +101,7 @@ class VanillaTrain:
 
 
     def summarize(self, load, scale, bs, lr, loss, n_resblocks, n_feats):
-        self.name = construct_name(name='EDSR-r%if%ix%i' % (scale, n_resblocks, n_feats),
+        self.name = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
             load=load, dataset=str(self.train_dl), bs=bs, action='vanilla')
 
         self.repr = 'train set: \n   %s \n' % repr(self.train_dl) \

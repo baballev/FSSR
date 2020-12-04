@@ -30,14 +30,14 @@ class TaskDataset(DatasetWrapper):
         if self.augment:
             p.add(self.augment)
         if self.style:
-            p.add(t.style_filter())
+            p.add(t.style_filter(**self.style_params))
         bases = [p(img) for img in imgs]
 
         y = torch.stack([t.resize(resized)(m) for m in bases])
         x = torch.stack([t.resize(scaled)(m) for m in bases])
 
-        y_spt, y_qry = y[:-1], y[-1]
-        x_spt, x_qry = x[:-1], x[-1]
+        y_spt, y_qry = y[:-1], y[-1:]
+        x_spt, x_qry = x[:-1], x[-1:]
         return x_spt, y_spt, x_qry, y_qry
 
     def __len__(self):
