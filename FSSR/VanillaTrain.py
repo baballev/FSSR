@@ -1,6 +1,5 @@
 import math
 from statistics import mean
-from datetime import timedelta
 
 import wandb
 import torch
@@ -14,7 +13,7 @@ from dataset import BasicDataset, DataLoader
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class VanillaTrain:
-    def __init__(self, train_fp, valid_fps, load=None, scale=2, bs=1, lr=0.0001, size=(256, 512), 
+    def __init__(self, train_fp, valid_fps, load=None, scale=2, bs=1, lr=0.0001, size=(256, 512),
         loss='L1', n_resblocks=16, n_feats=64):
 
         self.model = EDSR(n_resblocks, n_feats, scale).to(device)
@@ -25,21 +24,22 @@ class VanillaTrain:
         self.loss = Loss.get(loss, device)
 
         train_set = BasicDataset.preset(train_fp, scale, size)
-        self.train_dl = DataLoader(train_set, batch_size=bs, shuffle=False, num_workers=4)
+        self.train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
 
         self.valid_dls = []
         for valid_fp in valid_fps:
             valid_set = BasicDataset.preset(valid_fp, scale, size)
             valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
             self.valid_dls.append(valid_dl)
-        
+
         self.summarize(load, scale, bs, lr, loss, n_resblocks, n_feats)
 
 
     def __call__(self, epochs):
-        wandb.init(project='tester!', name=self.name, notes=self.repr, config=self.config)
+        name = '%s_e%i].pth' % (self.name, epochs)
+        wandb.init(project='tester!', name=name, notes=self.repr)
         wandb.watch(self.model)
-        self.logs = Logger(self.name + '.logs')
+        self.logs = Logger(name + '.logs')
 
         best_model = clone_state(self.model)
         best_loss = math.inf
@@ -63,7 +63,7 @@ class VanillaTrain:
         for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
             print('valid_loss(%s): %s' \
                 % (valid_dl, [round(x, 4) for x in losses]), file=self.logs)
-        save_state(best_model, '%s_%i].pth' % (self.name, epochs))
+        save_state(best_model, name + '.pth')
 
 
     def train(self):
@@ -103,13 +103,6 @@ class VanillaTrain:
     def summarize(self, load, scale, bs, lr, loss, n_resblocks, n_feats):
         self.name = construct_name(name='EDSR-r%if%ix%i' % (scale, n_resblocks, n_feats),
             load=load, dataset=str(self.train_dl), bs=bs, action='vanilla')
-
-        self.config = {
-            'dataset': str(self.train_dl),
-            'model': 'EDSRx%i' % scale,
-            'finetuning': load,
-            'batch_size': bs,
-        }
 
         self.repr = 'train set: \n   %s \n' % repr(self.train_dl) \
                   + 'valid sets: \n' \
