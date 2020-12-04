@@ -3,4 +3,4 @@ from .TaskDataset import TaskDataset
 from .datasets import datasets
 from .DataLoader import DataLoader
 
-__all__ = ['DataLoader', 'BasicDataset', 'TaskDataset', 'datasets']
+__all__ = ['DataLoader', 'BasicDataset', 'TaskDataset']

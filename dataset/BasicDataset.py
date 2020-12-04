@@ -1,11 +1,11 @@
 import os
 
-from torch.utils.data import Dataset
 import dataset.transform as t
 from .datasets import datasets
+from .DatasetWrapper import DatasetWrapper
 from utils import list_images, fetch_image
 
-class BasicDataset(Dataset):
+class BasicDataset(DatasetWrapper):
     """Single image dataset."""
     style_params = {'b': 0.2, 'c': 0.2, 's': 0.2, 'h': 0.1}
 
@@ -34,39 +34,3 @@ class BasicDataset(Dataset):
 
     def __len__(self):
         return len(self.paths)
-
-    def __str__(self):
-        path = os.path.normpath(self.fp)
-        name = path.split(os.sep)[-1]
-
-        options = []
-        if self.augment_name == 'augmentor':
-            options.append('AGMTR')
-        elif self.augment_name == 'torchvision':
-            options.append('TORCHVIS')
-        if self.style:
-            options.append('STYLE')
-
-        if options:
-            name += '#' + '_'.join(options)
-        return name
-
-    def __repr__(self):
-        """Dataset reprensentation trace."""
-        string = str(self)
-        string += ' ' + '-'.join(['(%ix%i)' % (h, w) for h, w in self.sizes])
-        string += ' augmentation<%s>' % (self.augment_name if self.augment_name else 'OFF')
-        string += ' style<%s>' % (self.style_params if self.style else 'OFF')
-        return string
-
-    @classmethod
-    def preset(cls, name, scale, size, **kwargs):
-        """BasicDataset presets"""
-        if 'TORCHVISION' in name:
-            kwargs['augment'] = 'torchvision'
-        if 'AUGMENTOR' in name:
-            kwargs['augment'] = 'augmentor'
-        if 'STYLE' in name:
-            kwargs['style'] = True
-        fp = name.split('#')[0]
-        return cls(fp, scale, size, **kwargs)

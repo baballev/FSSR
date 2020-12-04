@@ -4,31 +4,35 @@ import torch
 
 import dataset.transform as t
 from .datasets import datasets
+from .DatasetWrapper import DatasetWrapper
 from utils import list_images, fetch_image
 
-class TaskDataset(torch.utils.data.Dataset):
+class TaskDataset(DatasetWrapper):
     """Style-based task segmentation of the dataset."""
+    style_params = {'b': 0.2, 'c': 0.2, 's': 0.2, 'h': 0.1}
 
-    def __init__(self, fp, shots, scale, augment=True, style=True, resize=None):
+    def __init__(self, fp, scale, size, shots, augment=False, style=False):
+        self.fp = fp
         self.paths = list_images(datasets[fp] if fp in datasets else fp)
-        self.resize = resize
+        self.sizes = t.get_sizes(size, scale)
         self.scale = scale
-        self.shots = shots
         self.style = style
+        self.shots = shots
+        self.augment_name = augment
         self.augment = t.augment(augment) if augment else None
 
     def __getitem__(self, index):
         img_paths = random.sample(self.paths, self.shots + 1)
         imgs = [fetch_image(path) for path in img_paths]
-        resized, scaled = t.get_sizes(*self.resize, self.scale)
+        resized, scaled = self.sizes
 
-        pipeline = t.Pipeline()
+        p = t.Pipeline()
         if self.augment:
-            pipeline.add(self.augment)
+            p.add(self.augment)
         if self.style:
-            pipeline.add(t.style_filter())
+            p.add(t.style_filter())
+        bases = [p(img) for img in imgs]
 
-        bases = [pipeline(img) for img in imgs]
         y = torch.stack([t.resize(resized)(m) for m in bases])
         x = torch.stack([t.resize(scaled)(m) for m in bases])
 
