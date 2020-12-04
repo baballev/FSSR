@@ -6,15 +6,22 @@ def main(opt, require, summarize):
     # 2) train DIV2Kx2 (validation w/ w/out styles) train DIV2Kx2 styles (validation w/ w/out styles)
     # 3) train a meta network: how many epochs??
 
-    from FSSR import VanillaTrain
+    from FSSR import VanillaTrain, MetaTrain
 
-    require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
-    run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
-        scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss)
+    if opt.mode == 'vanilla-train':
+        require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
+        run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
+            scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss)
 
-    run(epochs=opt.epochs)
+        run(epochs=opt.epochs)
 
-    return 1
+    if opt.mode == 'meta-train':
+        require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
+        run = MetaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights
+            scale=opt.scale, shots=opt.nb_shots, bs=opt.batch_size, lr=opt.learning_rate,
+            meta_lr=.opt.meta_learning_rate, loss=opt.loss)
+
+        run(epochs=opt.epochs, update_steps=opt.update_steps)
 
     """if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
@@ -86,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument('--nb-shots', default=10, type=int,
         help='Number of shots in each task.')
     parser.add_argument('--loss', default='L1', choices=['VGG', 'L1', 'L2'],
-        help="Loss function used for training")
+        help='Loss function used for training the model.')
     parser.add_argument('--train-folder',
         help='Dataset preset name name or path training set directory.')
     parser.add_argument('--valid-folders', nargs='+', type=str,
@@ -94,7 +101,9 @@ if __name__ == "__main__":
     parser.add_argument('--load-weights',
         help='Path to the weight file for finetuning.')
     parser.add_argument('--learning-rate', default=0.0001, type=float,
-        help="Learning rate for training with Adam optimizer.")
+        help='Learning rate for training.')
+    parser.add_argument('--meta_learning_rate', default=0.00001, type=float,
+        help='Learning rate of the meta training.')
 
     # ~todo
     parser.add_argument('--models', nargs='+', type=str)
@@ -106,8 +115,6 @@ if __name__ == "__main__":
         help="Destination directory for the benchmark in 'evaluation' mode or upscaled images in 'upscale' mode.")
     parser.add_argument('--verbose', default=True, type=bool, choices=[True, False],
         help="Whether the script print info in stdout.")
-    parser.add_argument('--meta_learning_rate', default=0.00001,
-        help="Learning rate of the meta training.")
     parser.add_argument('--loss_network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18'],
         help="The loss network used for perceptual loss computing. Only for 'train' mode")
     parser.add_argument('--finetune_depth', default=0, type=int,
