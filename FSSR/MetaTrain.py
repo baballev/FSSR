@@ -57,7 +57,7 @@ class MetaTrain(Run):
             #     best_loss = eval_loss
             #     best_model = clone_state(self.model)
 
-        self.log('train_loss(%s): %s' % (train_dl, [round(x, 4) for x in train_losses]), True)
+        self.log('train_loss(%s): %s' % (self.train_dl, train_losses), True)
         # for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
         #     print('valid_loss(%s): %s' \
         #         % (valid_dl, [round(x, 4) for x in losses]), file=self.logs)
@@ -65,11 +65,10 @@ class MetaTrain(Run):
 
 
     def train(self, update_steps):
-        # losses = []
+        losses = []
         for data in (t := tqdm(self.train_dl)):
             x_spt, y_spt, x_qry, y_qry = [d.to(device) for d in data]
-            # print('\n', x_spt.shape, y_spt.shape, x_qry.shape, y_qry.shape)
-            losses_q = 0
+            #losses_q = []
             i = 0
             cloned = self.model.clone()
             for k in range(update_steps):
@@ -77,24 +76,23 @@ class MetaTrain(Run):
                 loss = self.loss(y_spt_hat, y_spt[i])
                 # print('\nsupport loss = %.5f' % loss)
                 cloned.adapt(loss)
-                loss_a = self.loss(cloned(x_spt[i]), y_spt[i])
+                # loss_a = self.loss(cloned(x_spt[i]), y_spt[i])
                 # print('support loss after = %.5f' % loss_a)
 
                 y_qry_hat = cloned(x_qry[i])
                 loss_q = self.loss(y_qry_hat, y_qry[i])
-                # print('query loss (y_qry_hat vs y_qry) = %.5f' % loss_q)
-                losses_q += loss_q
 
-                # del y_spt_hat
-                # del y_qry_hat
+                # print('query loss (y_qry_hat vs y_qry) = %.5f' % loss_q)
+                # losses_q.append(loss_q.item())
 
             self.optim.zero_grad()
-            losses_q.backward()
+            loss_q.backward()
             self.optim.step()
 
-            self.log({'train_loss_%s' % self.train_dl: loss_q})
-            # t.set_description('Train loss: %.4f (~%.4f)' % (loss, mean(losses)))
-        # return mean(losses)
+            losses.append(round(loss_q, 4))
+            self.log({'train_loss_%s' % self.train_dl: round(loss_q, 4)})
+            t.set_description('Task loss after %i steps: %.4f' % (update_steps, loss_q))
+        return losses
 
 
     # @torch.no_grad()
@@ -117,7 +115,7 @@ class MetaTrain(Run):
 
     def summarize(self, load, scale, bs, lr, meta_lr, shots, loss, n_resblocks, n_feats):
         self._str = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
-            load=load, dataset=self.train_dl, bs=bs, action='meta')
+            load=load, dataset=str(self.train_dl), bs=bs, action='meta')
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
                   + 'valid sets: \n' \

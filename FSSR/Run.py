@@ -21,7 +21,7 @@ class Run:
         if (type(payload) is dict and self.wandb):
             wandb.log(payload)
         elif (type(payload) is str):
-            print(s, file=self.logger if file else sys.stdout)
+            print(payload, file=self.logger if file else sys.stdout)
 
     def __str__(self):
         return self._str
