@@ -39,16 +39,15 @@ class MetaTrain(Run):
 
 
     def __call__(self, epochs, update_steps):
-        super().pre_call(name='%s_e%i_u%i]' % (str(self), epochs, update_steps))
+        super().__call__(name='%s_e%i_u%i]' % (self, epochs, update_steps))
         best_model = clone_state(self.model)
         best_loss = math.inf
 
         train_losses, valid_losses = [], []
         for epoch in range(epochs):
-            print('Epoch %i/%i' % (epoch + 1, epochs))
-            self.train(update_steps)
-            # train_loss = self.train(update_steps)
-            # train_losses.append(train_loss)
+            self.log('Epoch %i/%i' % (epoch + 1, epochs))
+            train_loss = self.train(update_steps)
+            train_losses.append(train_loss)
 
             # valid_loss = self.validate()
             # valid_losses.append(valid_loss)
@@ -58,8 +57,7 @@ class MetaTrain(Run):
             #     best_loss = eval_loss
             #     best_model = clone_state(self.model)
 
-        # print('train_loss(%s): %s' \
-        #     % (str(train_dl), [round(x, 4) for x in train_losses]), file=self.logs)
+        self.log('train_loss(%s): %s' % (train_dl, [round(x, 4) for x in train_losses]), True)
         # for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
         #     print('valid_loss(%s): %s' \
         #         % (valid_dl, [round(x, 4) for x in losses]), file=self.logs)
@@ -94,8 +92,7 @@ class MetaTrain(Run):
             losses_q.backward()
             self.optim.step()
 
-            # losses.append(loss.item())
-            # wandb.log({'train_loss_%s' % self.train_dl: loss})
+            self.log({'train_loss_%s' % self.train_dl: loss_q})
             # t.set_description('Train loss: %.4f (~%.4f)' % (loss, mean(losses)))
         # return mean(losses)
 
@@ -120,7 +117,7 @@ class MetaTrain(Run):
 
     def summarize(self, load, scale, bs, lr, meta_lr, shots, loss, n_resblocks, n_feats):
         self._str = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
-            load=load, dataset=str(self.train_dl), bs=bs, action='meta')
+            load=load, dataset=self.train_dl, bs=bs, action='meta')
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
                   + 'valid sets: \n' \
