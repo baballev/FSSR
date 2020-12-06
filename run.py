@@ -1,5 +1,5 @@
 """CLI runner file."""
-def main(opt, require, summarize):
+def main(opt, require):
     # from FSSR import vanilla_train, meta_train, models_test, finetuneMaml, MAMLupscale, upscale
 
     # 1) revisit everything so we have wandb logging + loss output in file + weights saved in fs
@@ -19,7 +19,7 @@ def main(opt, require, summarize):
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
         run = MetaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
             scale=opt.scale, shots=opt.nb_shots, bs=opt.batch_size, lr=opt.learning_rate,
-            meta_lr=opt.meta_learning_rate, loss=opt.loss)
+            meta_lr=opt.meta_learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
 
         run(epochs=opt.epochs, update_steps=opt.update_steps)
 
@@ -76,7 +76,7 @@ def main(opt, require, summarize):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    from utils import require_args, summarize_args
+    from utils import require_args
 
     parser = ArgumentParser()
 
@@ -106,6 +106,10 @@ if __name__ == "__main__":
         help='Learning rate of the meta training.')
     parser.add_argument('--update-steps', default=10, type=int,
         help='For meta-learning: number of gradient updates performed on each tasks.')
+    parser.add_argument('--no-wandb', action="store_true", default=False,
+        help='Whether or not to record the run with wandb.')
+    parser.add_argument('--resize', nargs='+', type=int, default=(256, 512),
+        help='Image size of the model input as (h, w).')
 
     # ~todo
     parser.add_argument('--models', nargs='+', type=str)
@@ -124,13 +128,7 @@ if __name__ == "__main__":
 
     opt = parser.parse_args()
     require = require_args(opt)
-    summarize = summarize_args(opt, {
-        'train_folder': lambda x: 'training set: %s' % x,
-        'valid_folders': lambda x: 'validation sets: %s' % ' | '.join(x),
-        'epochs': lambda x: 'epochs nb: %i' % x,
-        'scale': lambda x: 'scale factor: x%i' % x,
-        'batch_size': lambda x: 'batch size: %i' % x,
-        'load_weights': lambda x: 'loading weights?: %s %s' % (bool(x), x if x else '' ),
-    })
+
+    assert len(opt.resize) == 0 or len(opt.resize) == 2
 
     main(opt, require, summarize)
