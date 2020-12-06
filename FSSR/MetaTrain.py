@@ -6,15 +6,17 @@ import torch
 from tqdm import tqdm
 import torch.optim as optim
 
+from .Run import Run
 from utils import Logger, construct_name, load_state, clone_state, save_state
 from model import MAML, EDSR, Loss
 from dataset import TaskDataset, BasicDataset, DataLoader
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-class MetaTrain:
+class MetaTrain(Run):
     def __init__(self, train_fp, valid_fps, load=None, scale=2, shots=10, bs=1,
-        lr=0.001, meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=8, n_feats=64):
+        lr=0.001, meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=8, n_feats=64, wandb=False):
+        super(MetaTrain, self).__init__(wandb)
 
         model = EDSR(n_resblocks, n_feats, scale)
         if load:
@@ -37,10 +39,7 @@ class MetaTrain:
 
 
     def __call__(self, epochs, update_steps):
-        name = '%s_e%i_u%i].pth' % (self.name, epochs, update_steps)
-        # wandb.init(project='tester!', name=name, notes=self.repr)
-        # wandb.watch(self.model)
-        self.logs = Logger(name + '.logs')
+        super().pre_call(name='%s_e%i_u%i].pth' % (str(self), epochs, update_steps))
 
         best_model = clone_state(self.model)
         best_loss = math.inf
@@ -83,15 +82,15 @@ class MetaTrain:
                 print('\nsupport loss = %.5f' % loss)
                 cloned.adapt(loss)
                 loss_a = self.loss(cloned(x_spt[i]), y_spt[i])
-                print('support loss after = %.5f' % loss_a)                
+                print('support loss after = %.5f' % loss_a)
 
                 y_qry_hat = cloned(x_qry[i])
                 loss_q = self.loss(y_qry_hat, y_qry[i])
                 print('query loss (y_qry_hat vs y_qry) = %.5f' % loss_q)
                 losses_q += loss_q
-                
+
                 del y_spt_hat
-                del y_qry_hat   
+                del y_qry_hat
 
             self.optim.zero_grad()
             losses_q.backward()
@@ -122,10 +121,10 @@ class MetaTrain:
 
 
     def summarize(self, load, scale, bs, lr, meta_lr, shots, loss, n_resblocks, n_feats):
-        self.name = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
+        self._name = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
             load=load, dataset=str(self.train_dl), bs=bs, action='meta')
 
-        self.repr = 'train set: \n   %s \n' % repr(self.train_dl) \
+        self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
                   + 'valid sets: \n' \
                   +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
                   + 'finetuning: %s \n' % ('from %s' % load if load else 'False') \
@@ -135,6 +134,3 @@ class MetaTrain:
                   + 'learning rate: %s \n' % lr \
                   + 'meta-learning rate: %s \n' % meta_lr \
                   + 'loss function: %s \n' % loss
-
-    def __repr__(self):
-        return self.repr
