@@ -7,7 +7,7 @@ def main(opt, require):
     # 3) train a meta network: how many epochs??
 
     from FSSR import VanillaTrain, MetaTrain
-
+    
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
         run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
@@ -131,4 +131,4 @@ if __name__ == "__main__":
 
     assert len(opt.resize) == 0 or len(opt.resize) == 2
 
-    main(opt, require, summarize)
+    main(opt, require)

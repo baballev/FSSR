@@ -39,8 +39,7 @@ class MetaTrain(Run):
 
 
     def __call__(self, epochs, update_steps):
-        super().pre_call(name='%s_e%i_u%i].pth' % (str(self), epochs, update_steps))
-
+        super().pre_call(name='%s_e%i_u%i]' % (str(self), epochs, update_steps))
         best_model = clone_state(self.model)
         best_loss = math.inf
 
@@ -64,7 +63,7 @@ class MetaTrain(Run):
         # for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
         #     print('valid_loss(%s): %s' \
         #         % (valid_dl, [round(x, 4) for x in losses]), file=self.logs)
-        save_state(best_model, name + '.pth')
+        save_state(best_model, self.out)
 
 
     def train(self, update_steps):
@@ -75,22 +74,21 @@ class MetaTrain(Run):
             losses_q = 0
             i = 0
             cloned = self.model.clone()
-            import pdb; pdb.set_trace()
             for k in range(update_steps):
                 y_spt_hat = cloned(x_spt[i])
                 loss = self.loss(y_spt_hat, y_spt[i])
-                print('\nsupport loss = %.5f' % loss)
+                # print('\nsupport loss = %.5f' % loss)
                 cloned.adapt(loss)
                 loss_a = self.loss(cloned(x_spt[i]), y_spt[i])
-                print('support loss after = %.5f' % loss_a)
+                # print('support loss after = %.5f' % loss_a)
 
                 y_qry_hat = cloned(x_qry[i])
                 loss_q = self.loss(y_qry_hat, y_qry[i])
-                print('query loss (y_qry_hat vs y_qry) = %.5f' % loss_q)
+                # print('query loss (y_qry_hat vs y_qry) = %.5f' % loss_q)
                 losses_q += loss_q
 
-                del y_spt_hat
-                del y_qry_hat
+                # del y_spt_hat
+                # del y_qry_hat
 
             self.optim.zero_grad()
             losses_q.backward()
@@ -121,7 +119,7 @@ class MetaTrain(Run):
 
 
     def summarize(self, load, scale, bs, lr, meta_lr, shots, loss, n_resblocks, n_feats):
-        self._name = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
+        self._str = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
             load=load, dataset=str(self.train_dl), bs=bs, action='meta')
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
