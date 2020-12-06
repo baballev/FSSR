@@ -57,7 +57,8 @@ class MetaTrain(Run):
             #     best_loss = eval_loss
             #     best_model = clone_state(self.model)
 
-        self.log('train_loss(%s): %s' % (self.train_dl, train_losses), True)
+        self.log('train_loss(%s): %s' \
+            % (self.train_dl, [round(x, 4) for x in train_losses]), True)
         # for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
         #     print('valid_loss(%s): %s' \
         #         % (valid_dl, [round(x, 4) for x in losses]), file=self.logs)
@@ -89,8 +90,8 @@ class MetaTrain(Run):
             loss_q.backward()
             self.optim.step()
 
-            losses.append(round(loss_q, 4))
-            self.log({'train_loss_%s' % self.train_dl: round(loss_q, 4)})
+            losses.append(loss_q.item())
+            self.log({'train_loss_%s' % self.train_dl: loss_q})
             t.set_description('Task loss after %i steps: %.4f' % (update_steps, loss_q))
         return losses
 
