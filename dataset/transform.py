@@ -72,7 +72,7 @@ def tensor(x):
 
 class Pipeline:
     def __init__(self, *transforms):
-        self.transforms = transforms
+        self.transforms = list(transforms)
 
     def __call__(self, x):
         return T.Compose(self.transforms)(x)

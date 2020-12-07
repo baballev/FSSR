@@ -2,7 +2,7 @@ import torch
 from tqdm import tqdm
 
 from .Run import Run
-from utils import load_state
+from utils import construct_name, load_state
 from model import MAML, EDSR, Loss
 from dataset import BasicDataset, DataLoader
 
@@ -12,46 +12,51 @@ class Test(Run):
     def __init__(self, model_fps, valid_fps, scale, shots, lr, size, loss, wandb):
         super(Test, self).__init__(wandb)
 
-        models = []
+        self.models = []
         for model_fp in model_fps:
             autoencoder = EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1)
             load_state(autoencoder, model_fp)
             model = MAML(autoencoder, lr=lr, first_order=True, allow_nograd=True).to(device)
-            models.append(model)
+            self.models.append(model)
 
         self.loss = Loss.get(loss, device)
         self.model_names  = [m.split('.pt')[0] for m in model_fps]
 
+        
+        test_fp = valid_fps[0]
         test_set = BasicDataset.preset(test_fp, scale=scale, size=size)
-        self.test_dl = DataLoader(test_set, batch_size=shots, num_workers=4, shuffle=True)
+        self.test_dl = DataLoader(test_set, batch_size=shots + 1, num_workers=4, shuffle=True)
 
-        self.summarize(shots, lr, loss)
-        print(str(self))
-        print(repr(self))
+        self.summarize(shots, lr, loss, scale)
 
+    @torch.no_grad()
     def __call__(self, update_steps):
-        super().prepare('%s_e%s' % (self, update_steps))
+        super().prepare('%s_e%s]' % (self, update_steps))
 
         losses = {name: [] for name in self.model_names}
-        for data in tqdm(self.test_dl):
+        for data in self.test_dl:
             x, y = [d.to(device) for d in data]
-            y_spt, y_qry = y[:-1], y[-1]
-            x_spt, x_qry = x[:-1], x[-1]
+            y_spt, y_qry = y[:-1], y[-1:]
+            x_spt, x_qry = x[:-1], x[-1:]
 
             for model, name in zip(self.models, self.model_names):
-                # x_spt, y_spt, x_qry, y_qry
-                import pdb; pdb.set_trace()
-                # losses[name].append(loss)
-        # print(losses, file=logs)
+                cloned = model.clone()
+                for i in range(update_steps):
+                    y_spt_hat = cloned(x_spt[i])
+                    loss_spt = self.loss(y_spt_hat, y_spt[i])             
+                    cloned.adapt(loss_spt)
+                y_qry_hat = cloned(x_qry)
+                loss_q = self.loss(y_qry_hat, y_qry)
+                losses[name].append(loss_q.item())
+                print('%.4f' % loss_q)
 
-
-    def summarize(self, shots, lr, loss):
-        self._str = construct_name(name='vs'.join(self.model_names), bs=shots, action='test')
+    def summarize(self, shots, lr, loss, scale):
+        self._str = construct_name(name='vs'.join(self.model_names), dataset=str(self.test_dl), 
+            bs=shots, action='test')
 
         self._repr = 'evaluated models : \n' \
                    + ''.join(['    %s \n' % m for m in self.model_names]) \
-                   + 'valid sets: \n' \
-                   +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
+                   + 'validation sets: \n' \
                    + 'scale factor: %s \n' % scale \
                    + 'number of shots: %s \n' % shots \
                    + 'learning rate: %s \n' % lr \

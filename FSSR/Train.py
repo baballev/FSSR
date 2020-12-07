@@ -27,7 +27,6 @@ class Train(Run):
                 best_loss = eval_loss
                 best_model = clone_state(self.model)
 
-
         self.log('train_loss(%s): %s' \
             % (self.train_dl, [round(x, 4) for x in train_losses]), file=True)
         for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):

@@ -20,7 +20,7 @@ class Logger(object):
 def require_args(opt):
     def require(*args):
         for arg in args:
-            assert hasattr(opt, arg) and getattr(opt, arg), \
+            assert hasattr(opt, arg) and getattr(opt, arg) is not None, \
                 'argument --{} required to run --mode={}'.format(arg.replace('_', '-'), opt.mode)
     return require
 

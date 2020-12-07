@@ -18,7 +18,7 @@ class Run:
             wandb.init(project=self.project, name=name, notes=repr(self))
             wandb.watch(self.model)
 
-    def terminate(self, mode):
+    def terminate(self, best_model):
         save_state(best_model, self.out)
 
     def log(self, payload, file=False):
