@@ -2,7 +2,7 @@ import sys
 
 import wandb
 
-from utils import Logger
+from utils import Logger, save_state
 
 class Run:
     project = 'tester!'

@@ -11,7 +11,7 @@ def main(opt, require):
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
         run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
-            scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss)
+            scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss, wandb=not opt.no_wandb)
 
         run(epochs=opt.epochs)
 

@@ -10,9 +10,10 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class VanillaTrain(Train):
     def __init__(self, train_fp, valid_fps, load=None, scale=2, bs=1, lr=0.0001, size=(256, 512),
-        loss='L1', n_resblocks=16, n_feats=64):
+        loss='L1', n_resblocks=16, n_feats=64, wandb=False):
+        super(VanillaTrain, self).__init__(wandb)        
 
-        self.model = EDSR(n_resblocks, n_feats, scale).to(device)
+        self.model = EDSR(n_resblocks, n_feats, scale, res_scale=0.1).to(device)
         if load:
             load_state(self.model, load)
 
@@ -53,14 +54,14 @@ class VanillaTrain(Train):
 
 
     def summarize(self, load, scale, bs, lr, loss, n_resblocks, n_feats):
-        self.name = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
+        self._str = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
             load=load, dataset=str(self.train_dl), bs=bs, action='vanilla')
 
-        self.repr = 'train set: \n   %s \n' % repr(self.train_dl) \
-                  + 'valid sets: \n' \
-                  +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
-                  + 'finetuning: %s \n' % ('from %s' % load if load else 'False') \
-                  + 'scale factor: %s \n' % scale \
-                  + 'batch size: %s \n' % bs \
-                  + 'learning rate: %s \n' % lr \
-                  + 'loss function: %s \n' % loss
+        self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
+                   + 'valid sets: \n' \
+                   +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
+                   + 'finetuning: %s \n' % ('from %s' % load if load else 'False') \
+                   + 'scale factor: %s \n' % scale \
+                   + 'batch size: %s \n' % bs \
+                   + 'learning rate: %s \n' % lr \
+                   + 'loss function: %s \n' % loss

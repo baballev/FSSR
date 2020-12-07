@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
@@ -9,7 +10,7 @@ class VGGLoss(nn.Module):
     https://https://gist.github.com/alper111/8233cdb0414b4cb5853f2f730ab95a49
     """
     def __init__(self):
-        super(VGGPerceptualLoss, self).__init__()
+        super(VGGLoss, self).__init__()
         vgg16 = torchvision.models.vgg16(pretrained=True).features
         blocks = [vgg16[:4].eval(), vgg16[4:9].eval(), vgg16[9:16].eval(), vgg16[16:23].eval()]
         for bl in blocks:
@@ -38,7 +39,7 @@ class Loss:
     @staticmethod
     def get(loss, device):
         if loss == 'VGG':
-            return VGGPerceptualLoss().to(device)
+            return VGGLoss().to(device)
         if loss == 'L2':
             return F.mse_loss
         if loss == 'L1':

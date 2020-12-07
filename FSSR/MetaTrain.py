@@ -81,12 +81,12 @@ class MetaTrain(Train):
             load=load, dataset=str(self.train_dl), bs=self.nb_tasks, action='meta')
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
-                  + 'valid sets: \n' \
-                  +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
-                  + 'finetuning: %s \n' % ('from %s' % load if load else 'False') \
-                  + 'scale factor: %i \n' % scale \
-                  + 'tasks per update: %i \n' % self.nb_tasks \
-                  + 'number of shots: %i \n' % shots \
-                  + 'learning rate: %s \n' % lr \
-                  + 'meta-learning rate: %s \n' % meta_lr \
-                  + 'loss function: %s \n' % loss
+                   + 'valid sets: \n' \
+                   +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
+                   + 'finetuning: %s \n' % ('from %s' % load if load else 'False') \
+                   + 'scale factor: %i \n' % scale \
+                   + 'tasks per update: %i \n' % self.nb_tasks \
+                   + 'number of shots: %i \n' % shots \
+                   + 'learning rate: %s \n' % lr \
+                   + 'meta-learning rate: %s \n' % meta_lr \
+                   + 'loss function: %s \n' % loss

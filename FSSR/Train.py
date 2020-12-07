@@ -9,7 +9,7 @@ from utils import clone_state, clone
 
 class Train(Run):
     def __call__(self, epochs, suffix, **kwargs):
-        super().prepare('%s%s' % (self.name, suffix))
+        super().prepare('%s%s' % (self, suffix))
 
         best_model = clone_state(self.model)
         best_loss = math.inf
@@ -42,7 +42,7 @@ class Train(Run):
         for data in (t := tqdm(self.train_dl)):
             loss = self.train_batch(data, **kwargs)
             losses.append(loss)
-            wandb.log({'train_loss_%s' % self.train_dl: loss})
+            self.log({'train_loss_%s' % self.train_dl: loss})
             t.set_description('Train loss: %.4f (~%.4f)' % (loss, mean(losses)))
         return mean(losses)
 
@@ -57,7 +57,7 @@ class Train(Run):
                 loss = self.validate_batch(model, data, **kwargs)
                 losses.append(loss)
             loss_avg = mean(losses)
-            wandb.log({'valid_loss_%s' % valid_dl: loss_avg})
+            self.log({'valid_loss_%s' % valid_dl: loss_avg})
             print('valid_loss(%s): %.4f' % (valid_dl, loss_avg))
             valid_loss.append(loss_avg)
         return valid_loss
