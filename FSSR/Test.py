@@ -14,7 +14,7 @@ class Test(Run):
 
         models = []
         for model_fp in model_fps:
-            autoencoder = EDSR(n_resblocks=16, n_feats=32, scale=scale, res_scale=0.1)
+            autoencoder = EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1)
             load_state(autoencoder, model_fp)
             model = MAML(autoencoder, lr=lr, first_order=True, allow_nograd=True).to(device)
             models.append(model)

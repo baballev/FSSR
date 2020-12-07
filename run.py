@@ -6,7 +6,7 @@ def main(opt, require):
     # 2) train DIV2Kx2 (validation w/ w/out styles) train DIV2Kx2 styles (validation w/ w/out styles)
     # 3) train a meta network: how many epochs??
 
-    from FSSR import VanillaTrain, MetaTrain
+    from FSSR import VanillaTrain, MetaTrain, Test
 
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
@@ -23,10 +23,10 @@ def main(opt, require):
 
         run(epochs=opt.epochs, update_steps=opt.update_steps, update_test_steps=opt.update_test_steps)
 
-    elif opt.model == 'models-test':
+    elif opt.mode == 'models-test':
         require('valid_folders', 'models', 'scale', 'nb_shots', 'update_steps')
-        run = Test(model_fps=opt.models, valid_fps=valid_fps, scale=opt.scale, shots=opt.nb_shots,
-            lr=opt.learning_rate, wandb=not opt.no_wandb)
+        run = Test(model_fps=opt.models, valid_fps=opt.valid_folders, scale=opt.scale, shots=opt.nb_shots,
+            lr=opt.learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
 
         run(update_steps=opt.update_steps)
 
