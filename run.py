@@ -7,7 +7,7 @@ def main(opt, require):
     # 3) train a meta network: how many epochs??
 
     from FSSR import VanillaTrain, MetaTrain
-    
+
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
         run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
@@ -18,10 +18,10 @@ def main(opt, require):
     if opt.mode == 'meta-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
         run = MetaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
-            scale=opt.scale, shots=opt.nb_shots, bs=opt.batch_size, lr=opt.learning_rate,
+            scale=opt.scale, shots=opt.nb_shots, nb_tasks=opt.batch_size, lr=opt.learning_rate,
             meta_lr=opt.meta_learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
 
-        run(epochs=opt.epochs, update_steps=opt.update_steps)
+        run(epochs=opt.epochs, update_steps=opt.update_steps, update_test_steps=opt.update_test_steps)
 
     """if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
@@ -105,7 +105,9 @@ if __name__ == "__main__":
     parser.add_argument('--meta-learning-rate', default=0.0001, type=float,
         help='Learning rate of the meta training.')
     parser.add_argument('--update-steps', default=10, type=int,
-        help='For meta-learning: number of gradient updates performed on each tasks.')
+        help='For meta-learning: number of gradient updates when finetuning during training.')
+    parser.add_argument('--update-test-steps', default=10, type=int,
+        help='For meta-learning: number of gradient updates when finetuning during validation.')
     parser.add_argument('--no-wandb', action="store_true", default=False,
         help='Whether or not to record the run with wandb.')
     parser.add_argument('--resize', nargs='+', type=int, default=(256, 512),

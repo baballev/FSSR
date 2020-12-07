@@ -56,6 +56,10 @@ def save_state(state_dict, fp):
     """Dumps the model's state to file fp."""
     torch.save(state_dict, fp)
 
+def clone(model):
+    """Deep copy of the entire module."""
+    return copy.deepcopy(model)
+
 def clone_state(model):
     """Deep copy of the model's state."""
     return copy.deepcopy(model.state_dict())

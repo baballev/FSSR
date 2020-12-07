@@ -10,12 +10,16 @@ class Run:
     def __init__(self, wandb):
         self.wandb = wandb
 
-    def __call__(self, name):
+    def prepare(self, name):
         self.out = name + '.pth'
         self.logger = Logger(name + '.logs')
+
         if self.wandb:
             wandb.init(project=self.project, name=name, notes=repr(self))
             wandb.watch(self.model)
+
+    def terminate(self, mode):
+        save_state(best_model, self.out)
 
     def log(self, payload, file=False):
         if (type(payload) is dict and self.wandb):
