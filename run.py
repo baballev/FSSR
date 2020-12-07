@@ -15,7 +15,7 @@ def main(opt, require):
 
         run(epochs=opt.epochs)
 
-    if opt.mode == 'meta-train':
+    elif opt.mode == 'meta-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
         run = MetaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
             scale=opt.scale, shots=opt.nb_shots, nb_tasks=opt.batch_size, lr=opt.learning_rate,
@@ -23,21 +23,15 @@ def main(opt, require):
 
         run(epochs=opt.epochs, update_steps=opt.update_steps, update_test_steps=opt.update_test_steps)
 
-    """if opt.mode == 'vanilla-train':
-        require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
-        summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
-        vanilla_train(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
-            scale=opt.scale, bs=opt.batch_size, epochs=opt.epochs, lr=opt.learning_rate)
+    elif opt.model == 'models-test':
+        require('valid_folders', 'models', 'scale', 'nb_shots', 'update_steps')
+        run = Test(model_fps=opt.models, valid_fps=valid_fps, scale=opt.scale, shots=opt.nb_shots,
+            lr=opt.learning_rate, wandb=not opt.no_wandb)
 
-    elif opt.mode == 'meta-train':
-        require('train_folder', 'valid_folders', 'epochs', 'batch_size', 'scale')
-        summarize('train_folder', 'valid_folders', 'epochs', 'scale', 'batch_size', 'load_weights')
-        meta_train(train_fp=opt.train_folder, valid_fp=opt.valid_folders[0], load=opt.load_weights,
-            scale=opt.scale, shots=opt.nb_shots, bs=opt.batch_size, epochs=opt.epochs,
-            lr=opt.learning_rate, meta_lr=opt.meta_learning_rate)
+        run(update_steps=opt.update_steps)
 
+    """
     elif opt.mode == 'models-test':
-        require('valid_folders', 'models', 'scale', 'nb_shots')
         models_test(test_fp=opt.valid_folders[0], model_fps=opt.models, scale=opt.scale,
             shots=opt.nb_shots, lr=opt.learning_rate, epochs=opt.epochs)
 
