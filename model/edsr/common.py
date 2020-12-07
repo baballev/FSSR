@@ -26,17 +26,15 @@ class MeanShift(nn.Conv2d):
 class ResBlock(nn.Module):
     def __init__(self, n_feats, kernel_size, res_scale, bias=True):
         super(ResBlock, self).__init__()
-        m = []
-        for i in range(2):
-            m.append(Conv2d(n_feats, n_feats, kernel_size, bias=bias))
-
-        self.body = nn.Sequential(*m)
         self.res_scale = res_scale
+        self.body = nn.Sequential(
+            Conv2d(n_feats, n_feats, kernel_size, bias=bias),
+            nn.ReLU(),
+            Conv2d(n_feats, n_feats, kernel_size, bias=bias))
 
     def forward(self, x):
         res = self.body(x).mul(self.res_scale)
         res += x
-
         return res
 
 
