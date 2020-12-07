@@ -15,26 +15,23 @@ class TaskDataset(DatasetWrapper):
         self.fp = fp
         self.paths = list_images(datasets[fp] if fp in datasets else fp)
         self.sizes = t.get_sizes(size, scale)
-        self.scale = scale
         self.style = style
         self.shots = shots
         self.augment_name = augment
-        self.augment = t.augment(augment) if augment else None
+        self.augment = t.augment(augment, self.sizes[0])
+        self.scale = t.resize(self.sizes[1])
 
     def __getitem__(self, index):
         img_paths = random.sample(self.paths, self.shots + 1)
         imgs = [fetch_image(path) for path in img_paths]
-        resized, scaled = self.sizes
 
-        p = t.Pipeline()
-        if self.augment:
-            p.add(self.augment)
+        p = t.Pipeline(self.augment)
         if self.style:
             p.add(t.style_filter(**self.style_params))
         bases = [p(img) for img in imgs]
 
-        y = torch.stack([t.resize(resized)(m) for m in bases])
-        x = torch.stack([t.resize(scaled)(m) for m in bases])
+        y = torch.stack([t.tensor(m) for m in bases])
+        x = torch.stack([self.scale(m) for m in bases])
 
         y_spt, y_qry = y[:-1], y[-1:]
         x_spt, x_qry = x[:-1], x[-1:]

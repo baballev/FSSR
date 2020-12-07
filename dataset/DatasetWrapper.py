@@ -22,10 +22,10 @@ class DatasetWrapper(Dataset):
 
     def __repr__(self):
         """Dataset reprensentation trace."""
-        string = str(self)
-        string += ' ' + '-'.join(['(%ix%i)' % (h, w) for h, w in self.sizes])
-        string += ' augmentation<%s>' % (self.augment_name if self.augment_name else 'OFF')
-        string += ' style<%s>' % (self.style_params if self.style else 'OFF')
+        string = str(self) \
+               + ' ' + '-'.join(['(%ix%i)' % (h, w) for h, w in self.sizes]) \
+               + ' augmentation<%s>' % (self.augment_name if self.augment_name else 'OFF') \
+               + ' style<%s>' % (self.style_params if self.style else 'OFF')
         return string
 
     @classmethod

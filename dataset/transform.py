@@ -42,25 +42,19 @@ class RandomGrayscale(T.RandomGrayscale):
         return img
 
 
-def augment(library):
-    if library == 'torchvision':
-        return T.Compose([
-            T.RandomPerspective(),
-            T.RandomRotation((-15, 15)),
-            T.RandomResizedCrop((256, 512), scale=(0.5, 0.9), interpolation=Image.BICUBIC),
-            T.RandomHorizontalFlip(0.3),
-            T.RandomVerticalFlip(0.3)
-        ])
-    elif library == 'augmentor':
-        p = Augmentor.Pipeline()
+def augment(flag, size):
+    p = Augmentor.Pipeline()
+    if flag:
         p.rotate(probability=1, max_left_rotation=5, max_right_rotation=5)
         p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
         p.flip_left_right(probability=0.5)
-        p.zoom_random(probability=0.5, percentage_area=0.8)
+        p.zoom_random(probability=0.2, percentage_area=0.8)
         p.flip_top_bottom(probability=0.3)
-        return p.torch_transform()
+        p.crop_by_size(probability=0.5, width=size[1], height=size[0], centre=False)
+        p.resize(probability=1, width=size[1], height=size[0])
     else:
-        raise NotImplementedError
+        p.resize(probability=1, width=size[1], height=size[0])
+    return p.torch_transform()
 
 
 def style_filter(b, c, s, h):
@@ -73,9 +67,12 @@ def resize(size):
         T.ToTensor(),
     ])
 
+def tensor(x):
+    return T.ToTensor()(x)
+
 class Pipeline:
-    def __init__(self):
-        self.transforms = []
+    def __init__(self, *transforms):
+        self.transforms = transforms
 
     def __call__(self, x):
         return T.Compose(self.transforms)(x)
