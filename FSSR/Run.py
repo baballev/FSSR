@@ -9,6 +9,7 @@ class Run:
 
     def __init__(self, wandb):
         self.wandb = wandb
+        self.model = None
 
     def prepare(self, name):
         self.out = name + '.pth'
@@ -16,7 +17,8 @@ class Run:
 
         if self.wandb:
             wandb.init(project=self.project, name=name, notes=repr(self))
-            wandb.watch(self.model)
+            if self.model is not None:
+                wandb.watch(self.model)
 
     def terminate(self, best_model):
         save_state(best_model, self.out)

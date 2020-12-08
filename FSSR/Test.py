@@ -1,4 +1,5 @@
 import torch
+import wandb
 from tqdm import tqdm
 
 from .Run import Run
@@ -13,8 +14,11 @@ class Test(Run):
         super(Test, self).__init__(wandb)
 
         self.models = []
-        for model_fp in model_fps:
-            autoencoder = EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1)
+        AEs = [
+            EDSR(n_resblocks=32, n_feats=256, scale=scale, res_scale=0.1),
+            EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1)
+        ]
+        for model_fp, autoencoder in zip(model_fps, AEs): # 16 64
             load_state(autoencoder, model_fp)
             model = MAML(autoencoder, lr=lr, first_order=True, allow_nograd=True).to(device)
             self.models.append(model)
@@ -22,33 +26,42 @@ class Test(Run):
         self.loss = Loss.get(loss, device)
         self.model_names  = [m.split('.pt')[0] for m in model_fps]
 
-        
         test_fp = valid_fps[0]
         test_set = BasicDataset.preset(test_fp, scale=scale, size=size)
         self.test_dl = DataLoader(test_set, batch_size=shots + 1, num_workers=4, shuffle=True)
 
         self.summarize(shots, lr, loss, scale)
 
+
     @torch.no_grad()
     def __call__(self, update_steps):
         super().prepare('%s_e%s]' % (self, update_steps))
 
         losses = {name: [] for name in self.model_names}
-        for data in self.test_dl:
+        for j, data in enumerate(self.test_dl):
             x, y = [d.to(device) for d in data]
             y_spt, y_qry = y[:-1], y[-1:]
             x_spt, x_qry = x[:-1], x[-1:]
 
+            example = [
+                wandb.Image(x_qry[0].cpu(), caption='input'),
+                wandb.Image(y_qry[0].cpu(), caption='y_true'),
+            ]
             for model, name in zip(self.models, self.model_names):
                 cloned = model.clone()
-                for i in range(update_steps):
-                    y_spt_hat = cloned(x_spt[i])
-                    loss_spt = self.loss(y_spt_hat, y_spt[i])             
+                for k in range(update_steps):
+                    y_spt_hat = cloned(x_spt)
+                    loss_spt = self.loss(y_spt_hat, y_spt)             
                     cloned.adapt(loss_spt)
                 y_qry_hat = cloned(x_qry)
                 loss_q = self.loss(y_qry_hat, y_qry)
+
                 losses[name].append(loss_q.item())
-                print('%.4f' % loss_q)
+                self.log({name: loss_q.item()}) 
+                example.append(wandb.Image(y_qry_hat[0].cpu(), caption='y_%s:%.4f' % (name, loss_q.item())))
+            if j < 4:
+                self.log({'img_%i' % j: example})
+
 
     def summarize(self, shots, lr, loss, scale):
         self._str = construct_name(name='vs'.join(self.model_names), dataset=str(self.test_dl), 

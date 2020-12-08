@@ -5,7 +5,7 @@ from utils import list_images, fetch_image
 
 class BasicDataset(DatasetWrapper):
     """Single image dataset."""
-    style_params = {'b': 0.2, 'c': 0.2, 's': 0.2, 'h': 0.1}
+    style_params = {'b': 0.4, 'c': 0.4, 's': 0.4, 'h': 0.2}
 
     def __init__(self, fp, scale, size, augment=False, style=False):
         self.fp = fp
