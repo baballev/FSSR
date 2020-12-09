@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 
 from .Train import Train
-from utils import construct_name, load_state
+from utils import load_state
 from model import EDSR, Loss
 from dataset import BasicDataset, DataLoader
 
@@ -11,7 +11,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 class VanillaTrain(Train):
     def __init__(self, train_fp, valid_fps, load=None, scale=2, bs=1, lr=0.0001, size=(256, 512),
         loss='L1', n_resblocks=16, n_feats=64, wandb=False):
-        super(VanillaTrain, self).__init__(wandb)        
+        super(VanillaTrain, self).__init__(wandb)
 
         self.model = EDSR(n_resblocks, n_feats, scale, res_scale=0.1).to(device)
         if load:

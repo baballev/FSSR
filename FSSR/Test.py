@@ -3,7 +3,7 @@ import wandb
 from tqdm import tqdm
 
 from .Run import Run
-from utils import construct_name, load_state
+from utils import load_state
 from model import MAML, EDSR, Loss
 from dataset import BasicDataset, DataLoader
 
@@ -52,13 +52,13 @@ class Test(Run):
                 cloned = model.clone()
                 for k in range(update_steps):
                     y_spt_hat = cloned(x_spt)
-                    loss_spt = self.loss(y_spt_hat, y_spt)             
+                    loss_spt = self.loss(y_spt_hat, y_spt)
                     cloned.adapt(loss_spt)
                 y_qry_hat = cloned(x_qry)
                 loss_q = self.loss(y_qry_hat, y_qry)
 
                 losses[name].append(loss_q.item())
-                self.log({name: loss_q.item()}) 
+                self.log({name: loss_q.item()})
                 example.append(wandb.Image(y_qry_hat[0].cpu(), caption='y_%s:%.4f' % (name, loss_q.item())))
             if j < 4:
                 self.log({'img_%i' % j: example})

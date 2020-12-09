@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 
 from .Train import Train
-from utils import construct_name, load_state
+from utils import load_state
 from model import MAML, EDSR, Loss
 from dataset import TaskDataset, DataLoader
 
@@ -36,9 +36,9 @@ class MetaTrain(Train):
 
     def __call__(self, epochs, update_steps, update_test_steps):
         super().__call__(
-            epochs=epochs, 
+            epochs=epochs,
             update_steps=update_steps,
-            update_test_steps=update_test_steps, 
+            update_test_steps=update_test_steps,
             name='%s_e%i_u%i]' % (self, epochs, update_steps))
 
 
