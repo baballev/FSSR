@@ -11,14 +11,15 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class Test(Run):
     def __init__(self, model_fps, valid_fps, scale, shots, lr, size, loss, wandb):
-        super(Test, self).__init__(wandb)
+        super(Test, self).__init__(wandb='test!' if wandb else None)
 
         self.models = []
         AEs = [
-            EDSR(n_resblocks=32, n_feats=256, scale=scale, res_scale=0.1),
-            EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1)
+            # EDSR(n_resblocks=32, n_feats=256, scale=scale, res_scale=0.1),
+            EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1),
+            EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1),
         ]
-        for model_fp, autoencoder in zip(model_fps, AEs): # 16 64
+        for model_fp, autoencoder in zip(model_fps, AEs):
             load_state(autoencoder, model_fp)
             model = MAML(autoencoder, lr=lr, first_order=True, allow_nograd=True).to(device)
             self.models.append(model)
@@ -64,8 +65,7 @@ class Test(Run):
 
 
     def summarize(self, shots, lr, loss, scale):
-        self._str = construct_name(name='vs'.join(self.model_names), dataset=str(self.test_dl), 
-            bs=shots, action='test')
+        self._str = '%s[%s_%s_bs%s' % ('vs'.join(self.model_names), 'test', str(self.test_dl).replace('_', '-'), shots)
 
         self._repr = 'evaluated models : \n' \
                    + ''.join(['    %s \n' % m for m in self.model_names]) \

@@ -35,11 +35,14 @@ class MetaTrain(Train):
 
 
     def __call__(self, epochs, update_steps, update_test_steps):
-        super().__call__(epochs=epochs, update_steps=update_steps,
-            update_test_steps=update_test_steps, suffix='_e%i_u%i]' % (epochs, update_steps))
+        super().__call__(
+            epochs=epochs, 
+            update_steps=update_steps,
+            update_test_steps=update_test_steps, 
+            name='%s_e%i_u%i]' % (self, epochs, update_steps))
 
 
-    def train_batch(self, batch, update_steps):
+    def train_batch(self, batch, update_steps, **_):
         x_spt, y_spt, x_qry, y_qry = [v.to(device) for v in batch]
 
         loss_q = 0
@@ -61,23 +64,23 @@ class MetaTrain(Train):
         return loss_q.item()
 
 
-    def validate_batch(self, model, batch, update_test_steps):
+    def validate_batch(self, model, batch, update_test_steps, **_):
         x_spt, y_spt, x_qry, y_qry = [v.to(device) for v in batch]
         assert x_spt.shape[0] == 1, 'Can only be one task per batch on validation'
 
         cloned = model.clone()
         for k in range(update_test_steps):
-            y_spt_hat = cloned(x_spt[i])
-            loss_spt = self.loss(y_spt_hat, y_spt[i])
+            y_spt_hat = cloned(x_spt[0])
+            loss_spt = self.loss(y_spt_hat, y_spt[0])
             cloned.adapt(loss_spt)
 
-            y_qry_hat = cloned(x_qry[i])
-            loss_q = self.loss(y_qry_hat, y_qry[i])
+            y_qry_hat = cloned(x_qry[0])
+            loss_q = self.loss(y_qry_hat, y_qry[0])
         return loss_q.item()
 
 
     def summarize(self, load, scale, lr, meta_lr, shots, loss, n_resblocks, n_feats):
-        self._str = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
+        self._str = self.construct_name(model='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
             load=load, dataset=str(self.train_dl), bs=self.nb_tasks, action='meta')
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \

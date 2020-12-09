@@ -8,8 +8,11 @@ from .Run import Run
 from utils import clone_state, clone
 
 class Train(Run):
-    def __call__(self, epochs, suffix, **kwargs):
-        super().prepare('%s%s' % (self, suffix))
+    def __init__(self, wandb):
+        super(Train, self).__init__(wandb='train!' if wandb else None)
+
+    def __call__(self, name, epochs, **kwargs):
+        super().prepare(name)
 
         best_model = clone_state(self.model)
         best_loss = math.inf
@@ -19,7 +22,7 @@ class Train(Run):
             train_loss = self.train(**kwargs)
             train_losses.append(train_loss)
 
-            valid_loss = self.validate()
+            valid_loss = self.validate(**kwargs)
             valid_losses.append(valid_loss)
 
             eval_loss = mean(valid_loss)
@@ -46,7 +49,6 @@ class Train(Run):
         return mean(losses)
 
 
-    @torch.no_grad()
     def validate(self, **kwargs):
         model = clone(self.model)
         valid_loss = []
@@ -60,3 +62,9 @@ class Train(Run):
             print('valid_loss(%s): %.4f' % (valid_dl, loss_avg))
             valid_loss.append(loss_avg)
         return valid_loss
+
+
+    def construct_name(self, model, load, dataset, bs, action):
+        prefix = '' if load is None else load.split('.pt')[0]
+        return '%s%s[%s_%s_bs%s' % (prefix, model, action, dataset.replace('_', '-'), bs)
+

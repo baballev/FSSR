@@ -33,7 +33,7 @@ class VanillaTrain(Train):
 
 
     def __call__(self, epochs):
-        super().__call__(epochs=epochs, suffix='_e%i]' % epochs)
+        super().__call__(name='%s_e%i]' % (self, epochs), epochs=epochs)
 
 
     def train_batch(self, batch):
@@ -45,7 +45,7 @@ class VanillaTrain(Train):
         self.optim.step()
         return loss.item()
 
-
+    @torch.no_grad()
     def validate_batch(self, model, batch):
         x, y = [d.to(device) for d in batch]
         y_hat = model(x)
@@ -54,7 +54,7 @@ class VanillaTrain(Train):
 
 
     def summarize(self, load, scale, bs, lr, loss, n_resblocks, n_feats):
-        self._str = construct_name(name='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
+        self._str = self.construct_name(model='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
             load=load, dataset=str(self.train_dl), bs=bs, action='vanilla')
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \

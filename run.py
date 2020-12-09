@@ -1,11 +1,5 @@
 """CLI runner file."""
 def main(opt, require):
-    # from FSSR import vanilla_train, meta_train, models_test, finetuneMaml, MAMLupscale, upscale
-
-    # 1) revisit everything so we have wandb logging + loss output in file + weights saved in fs
-    # 2) train DIV2Kx2 (validation w/ w/out styles) train DIV2Kx2 styles (validation w/ w/out styles)
-    # 3) train a meta network: how many epochs??
-
     from FSSR import VanillaTrain, MetaTrain, Test
 
     if opt.mode == 'vanilla-train':
@@ -30,43 +24,6 @@ def main(opt, require):
 
         run(update_steps=opt.update_steps)
 
-    """
-    elif opt.mode == 'models-test':
-        models_test(test_fp=opt.valid_folders[0], model_fps=opt.models, scale=opt.scale,
-            shots=opt.nb_shots, lr=opt.learning_rate, epochs=opt.epochs)
-
-    elif opt.mode == 'finetune-maml':
-        finetuneMaml(train_path=opt.train_folder,
-                     valid_path=opt.valid_folder,
-                     batch_size=opt.batch_size,
-                     epochs=opt.epochs,
-                     learning_rate=opt.learning_rate,
-                     meta_learning_rate=opt.meta_learning_rate,
-                     load_weights=opt.load_weights,
-                     save_weights=opt.save_weights,
-                     finetune_depth=opt.finetune_depth,
-                     network=opt.model)
-
-    elif opt.mode == 'meta-upscale':
-        MAMLupscale(in_path=opt.input,
-                    out_path=opt.output,
-                    weights_path=opt.load_weights,
-                    learning_rate=opt.learning_rate,
-                    batch_size=opt.batch_size,
-                    verbose=opt.verbose,
-                    device_name=opt.device,
-                    network=opt.model)
-
-    elif opt.mode == 'evaluation':
-        from evaluation import evaluation
-        evaluation(in_path=opt.input, out_path=opt.output, verbose=True)
-
-    elif opt.mode == 'upscale-video':
-        pass
-
-    elif opt.mode == 'upscale':
-        upscale(load_weights=opt.load_weights, input=opt.input, out=opt.output)"""
-
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -77,7 +34,6 @@ if __name__ == "__main__":
     parser.add_argument('mode', choices=['vanilla-train', 'meta-train', 'models-test', \
         'meta-upscale', 'finetune-maml', 'evaluation', 'upscale-video', 'upscale'],
         help="The name of the mode to run")
-
     parser.add_argument('--batch-size', type=int,
         help='The number of images for each training iteration as an integer.')
     parser.add_argument('--scale', type=int,
@@ -94,7 +50,7 @@ if __name__ == "__main__":
         help='Dataset preset name name or path validation set directory.')
     parser.add_argument('--load-weights',
         help='Path to the weight file for finetuning.')
-    parser.add_argument('--learning-rate', default=0.001, type=float,
+    parser.add_argument('--learning-rate', default=0.0001, type=float,
         help='Learning rate for training.')
     parser.add_argument('--meta-learning-rate', default=0.0001, type=float,
         help='Learning rate of the meta training.')
@@ -106,22 +62,9 @@ if __name__ == "__main__":
         help='Whether or not to record the run with wandb.')
     parser.add_argument('--resize', nargs='+', type=int, default=(256, 512),
         help='Image size of the model input as (h, w).')
-
-    # ~todo
-    parser.add_argument('--models', nargs='+', type=str)
-    parser.add_argument('--save-weights',
-        help='Path to save the weights after training (.pt).')
-    parser.add_argument('--input', default='../CelebA/', # '../../../../mnt/data/prim_project/dataset/FSSR/CelebA/'
-        help="Path to the directory containing the images to upscale. Only used for upscaling or evaluation.")
-    parser.add_argument('--output', default='./out/',
-        help="Destination directory for the benchmark in 'evaluation' mode or upscaled images in 'upscale' mode.")
-    parser.add_argument('--verbose', default=True, type=bool, choices=[True, False],
-        help="Whether the script print info in stdout.")
-    parser.add_argument('--loss_network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18'],
-        help="The loss network used for perceptual loss computing. Only for 'train' mode")
-    parser.add_argument('--finetune_depth', default=0, type=int,
-        help="Number of parameter tensors to be finetuned in finetune_maml mode. 0 to modify all layers.")
-
+    parser.add_argument('--models', nargs='+', type=str,
+        help='List of models meta/non-meta to evaluate.')
+    
     opt = parser.parse_args()
     require = require_args(opt)
 
