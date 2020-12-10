@@ -19,7 +19,7 @@ def main(opt, require):
 
     elif opt.mode == 'models-test':
         require('valid_folders', 'models', 'scale', 'nb_shots', 'update_steps')
-        run = Test(model_fps=opt.models, valid_fps=opt.valid_folders, scale=opt.scale, shots=opt.nb_shots,
+        run = Test(model_fps=opt.models, test_fp=opt.valid_folders[0], scale=opt.scale, shots=opt.nb_shots,
             lr=opt.learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
 
         run(update_steps=opt.update_steps)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         help='Image size of the model input as (h, w).')
     parser.add_argument('--models', nargs='+', type=str,
         help='List of models meta/non-meta to evaluate.')
-    
+
     opt = parser.parse_args()
     require = require_args(opt)
 

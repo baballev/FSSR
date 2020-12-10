@@ -45,6 +45,7 @@ class VanillaTrain(Train):
         self.optim.step()
         return loss.item()
 
+
     @torch.no_grad()
     def validate_batch(self, model, batch):
         x, y = [d.to(device) for d in batch]
@@ -54,8 +55,11 @@ class VanillaTrain(Train):
 
 
     def summarize(self, load, scale, bs, lr, loss, n_resblocks, n_feats):
-        self._str = self.construct_name(model='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
-            load=load, dataset=str(self.train_dl), bs=bs, action='vanilla')
+        prefix = '' if load is None else load.split('.pt')[0]
+        model = 'EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale)
+        dataset = str(self.train_dl).replace('_', '-')
+
+        self._str '%s%s[%s_%s_bs%s' % (prefix, model, 'vanilla', dataset, bs)
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
                    + 'valid sets: \n' \

@@ -62,9 +62,3 @@ class Train(Run):
             print('valid_loss(%s): %.4f' % (valid_dl, loss_avg))
             valid_loss.append(loss_avg)
         return valid_loss
-
-
-    def construct_name(self, model, load, dataset, bs, action):
-        prefix = '' if load is None else load.split('.pt')[0]
-        return '%s%s[%s_%s_bs%s' % (prefix, model, action, dataset.replace('_', '-'), bs)
-

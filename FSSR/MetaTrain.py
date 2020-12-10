@@ -80,8 +80,11 @@ class MetaTrain(Train):
 
 
     def summarize(self, load, scale, lr, meta_lr, shots, loss, n_resblocks, n_feats):
-        self._str = self.construct_name(model='EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale),
-            load=load, dataset=str(self.train_dl), bs=self.nb_tasks, action='meta')
+        prefix = '' if load is None else load.split('.pt')[0]
+        model = 'EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale)
+        dataset = str(self.train_dl).replace('_', '-')
+
+        self._str = '%s%s[%s_%s_t%s_s%s' % (prefix, model, 'meta', dataset, bs, shots)
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
                    + 'valid sets: \n' \
