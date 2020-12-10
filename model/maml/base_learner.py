@@ -1,8 +1,10 @@
 """
-    Original code: https://github.com/learnables/learn2learn/blob/master/learn2learn/algorithms/maml.py
+Credit goes to the following repo for the content of this file:
+https://github.com/learnables/learn2learn
 """
 
 from torch import nn
+
 
 class BaseLearner(nn.Module):
 

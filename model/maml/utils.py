@@ -1,83 +1,35 @@
-#!/usr/bin/env python3
+"""
+Credit goes to the following repo for the content of this file:
+https://github.com/learnables/learn2learn
+"""
 
-import copy
 import torch
 
-
-def magic_box(x):
-    """
-
-    [[Source]](https://github.com/learnables/learn2learn/blob/master/learn2learn/utils.py)
-
-    **Description**
-
-    The magic box operator, which evaluates to 1 but whose gradient is \\(dx\\):
-
-    $$\\boxdot (x) = \\exp(x - \\bot(x))$$
-
-    where \\(\\bot\\) is the stop-gradient (or detach) operator.
-
-    This operator is useful when computing higher-order derivatives of stochastic graphs.
-    For more informations, please refer to the DiCE paper. (Reference 1)
-
-    **References**
-
-    1. Foerster et al. 2018. "DiCE: The Infinitely Differentiable Monte-Carlo Estimator." arXiv.
-
-    **Arguments**
-
-    * **x** (Variable) - Variable to transform.
-
-    **Return**
-
-    * (Variable) - Tensor of 1, but it's gradient is the gradient of x.
-
-    **Example**
-
-    ~~~python
-    loss = (magic_box(cum_log_probs) * advantages).mean()  # loss is the mean advantage
-    loss.backward()
-    ~~~
-    """
-    if isinstance(x, torch.Tensor):
-        return torch.exp(x - x.detach())
-    return x
-
-
-def clone_parameters(param_list):
-    return [p.clone() for p in param_list]
+import copy
 
 
 def clone_module(module, memo=None):
     """
-
-    [[Source]](https://github.com/learnables/learn2learn/blob/master/learn2learn/utils.py)
-
-    **Description**
-
+    Description
+    ---
     Creates a copy of a module, whose parameters/buffers/submodules
-    are created using PyTorch's torch.clone().
+    are created using PyTorch's torch.clone(). This implies that the computational graph is kept,
+    and you can compute the derivatives of the new modules' parameters w.r.t the original parameters.
 
-    This implies that the computational graph is kept, and you can compute
-    the derivatives of the new modules' parameters w.r.t the original
-    parameters.
-
-    **Arguments**
-
+    Arguments
+    ---
     * **module** (Module) - Module to be cloned.
 
-    **Return**
-
+    Return
+    ---
     * (Module) - The cloned module.
 
-    **Example**
-
-    ~~~python
-    net = nn.Sequential(Linear(20, 10), nn.ReLU(), nn.Linear(10, 2))
-    clone = clone_module(net)
-    error = loss(clone(X), y)
-    error.backward()  # Gradients are back-propagate all the way to net.
-    ~~~
+    Example
+    ---
+    >>> net = nn.Sequential(Linear(20, 10), nn.ReLU(), nn.Linear(10, 2))
+    >>> clone = clone_module(net)
+    >>> error = loss(clone(X), y)
+    >>> error.backward()  # Gradients are back-propagate all the way to net.
     """
     # NOTE: This function might break in future versions of PyTorch.
 
@@ -151,112 +103,33 @@ def clone_module(module, memo=None):
     return clone
 
 
-def detach_module(module):
-    """
-
-    [[Source]](https://github.com/learnables/learn2learn/blob/master/learn2learn/utils.py)
-
-    **Description**
-
-    Detaches all parameters/buffers of a previously cloned module from its computational graph.
-
-    Note: detach works in-place, so it does not return a copy.
-
-    **Arguments**
-
-    * **module** (Module) - Module to be detached.
-
-    **Example**
-
-    ~~~python
-    net = nn.Sequential(Linear(20, 10), nn.ReLU(), nn.Linear(10, 2))
-    clone = clone_module(net)
-    detach_module(clone)
-    error = loss(clone(X), y)
-    error.backward()  # Gradients are back-propagate on clone, not net.
-    ~~~
-    """
-    if not isinstance(module, torch.nn.Module):
-        return
-    # First, re-write all parameters
-    for param_key in module._parameters:
-        if module._parameters[param_key] is not None:
-            detached = module._parameters[param_key].detach_()
-
-    # Second, handle the buffers if necessary
-    for buffer_key in module._buffers:
-        if module._buffers[buffer_key] is not None and \
-                module._buffers[buffer_key].requires_grad:
-            module._buffers[buffer_key] = module._buffers[buffer_key].detach_()
-
-    # Then, recurse for each submodule
-    for module_key in module._modules:
-        detach_module(module._modules[module_key])
-
-
-def clone_distribution(dist):
-    # TODO: This function was never tested.
-    clone = copy.deepcopy(dist)
-
-    for param_key in clone.__dict__:
-        item = clone.__dict__[param_key]
-        if isinstance(item, torch.Tensor):
-            if item.requires_grad:
-                clone.__dict__[param_key] = dist.__dict__[param_key].clone()
-        elif isinstance(item, torch.nn.Module):
-            clone.__dict__[param_key] = clone_module(dist.__dict__[param_key])
-        elif isinstance(item, torch.Distribution):
-            clone.__dict__[param_key] = clone_distribution(dist.__dict__[param_key])
-
-    return clone
-
-
-def detach_distribution(dist):
-    # TODO: This function was never tested.
-    for param_key in dist.__dict__:
-        item = dist.__dict__[param_key]
-        if isinstance(item, torch.Tensor):
-            if item.requires_grad:
-                dist.__dict__[param_key] = dist.__dict__[param_key].detach()
-        elif isinstance(item, torch.nn.Module):
-            dist.__dict__[param_key] = detach_module(dist.__dict__[param_key])
-        elif isinstance(item, torch.Distribution):
-            dist.__dict__[param_key] = detach_distribution(dist.__dict__[param_key])
-    return dist
-
-
 def update_module(module, updates=None, memo=None):
-    r"""
-    [[Source]](https://github.com/learnables/learn2learn/blob/master/learn2learn/utils.py)
-
-    **Description**
-
+    """
+    Description
+    ---
     Updates the parameters of a module in-place, in a way that preserves differentiability.
-
     The parameters of the module are swapped with their update values, according to:
     \[
     p \gets p + u,
     \]
     where \(p\) is the parameter, and \(u\) is its corresponding update.
 
-
-    **Arguments**
-
+    Arguments
+    ---
     * **module** (Module) - The module to update.
     * **updates** (list, *optional*, default=None) - A list of gradients for each parameter
         of the model. If None, will use the tensors in .update attributes.
 
-    **Example**
-    ~~~python
-    error = loss(model(X), y)
-    grads = torch.autograd.grad(
-        error,
-        model.parameters(),
-        create_graph=True,
-    )
-    updates = [-lr * g for g in grads]
-    l2l.update_module(model, updates=updates)
-    ~~~
+    Example
+    ---
+    >>> error = loss(model(X), y)
+    >>> grads = torch.autograd.grad(
+    >>>     error,
+    >>>     model.parameters(),
+    >>>     create_graph=True,
+    >>> )
+    >>> updates = [-lr * g for g in grads]
+    >>> l2l.update_module(model, updates=updates)
     """
     if memo is None:
         memo = {}

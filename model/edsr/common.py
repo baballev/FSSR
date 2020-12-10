@@ -1,3 +1,8 @@
+"""
+Credit goes to the following repo for the content of this file:
+https://github.com/thstkdgus35/EDSR-PyTorch
+"""
+
 import math
 
 import torch
@@ -29,7 +34,7 @@ class ResBlock(nn.Module):
         self.res_scale = res_scale
         self.body = nn.Sequential(
             Conv2d(n_feats, n_feats, kernel_size, bias=bias),
-            nn.ReLU(),
+            nn.ReLU(True),
             Conv2d(n_feats, n_feats, kernel_size, bias=bias))
 
     def forward(self, x):

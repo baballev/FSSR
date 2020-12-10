@@ -1,22 +1,17 @@
+"""
+Credit goes to the following repo for the content of this file:
+https://github.com/thstkdgus35/EDSR-PyTorch
+"""
+
 import torch.nn as nn
 
 from .common import Conv2d, MeanShift, ResBlock, Upsampler
 
-url = {
-    'r16f64x2': 'https://cv.snu.ac.kr/research/EDSR/models/edsr_baseline_x2-1bc95232.pt',
-    'r16f64x3': 'https://cv.snu.ac.kr/research/EDSR/models/edsr_baseline_x3-abf2a44e.pt',
-    'r16f64x4': 'https://cv.snu.ac.kr/research/EDSR/models/edsr_baseline_x4-6b446fab.pt',
-    'r32f256x2': 'https://cv.snu.ac.kr/research/EDSR/models/edsr_x2-0edfb8a3.pt',
-    'r32f256x3': 'https://cv.snu.ac.kr/research/EDSR/models/edsr_x3-ea3ef2c6.pt',
-    'r32f256x4': 'https://cv.snu.ac.kr/research/EDSR/models/edsr_x4-4f62e9ef.pt'
-}
 
 class EDSR(nn.Module):
     def __init__(self, n_resblocks, n_feats, scale, rgb_range=1, n_colors=3, res_scale=1):
         super(EDSR, self).__init__()
 
-        url_name = 'r{}f{}x{}'.format(n_resblocks, n_feats, scale)
-        self.url = url[url_name] if url_name in url else None
         self.sub_mean = MeanShift(rgb_range)
         self.add_mean = MeanShift(rgb_range, sign=1)
         kernel_size = 3

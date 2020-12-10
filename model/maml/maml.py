@@ -1,3 +1,8 @@
+"""
+Credit goes to the following repo for the content of this file:
+https://github.com/learnables/learn2learn
+"""
+
 import traceback
 from torch.autograd import grad
 
