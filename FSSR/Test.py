@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 from .Run import Run
 from utils import load_state
-from model import MAML, EDSR, Loss
+from model import MAML, EDSR, Loss, create_edsr
 from dataset import BasicDataset, DataLoader
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -14,15 +14,12 @@ class Test(Run):
         super(Test, self).__init__(wandb='test!' if wandb else None)
 
         self.models = []
-        AEs = [
-            # EDSR(n_resblocks=32, n_feats=256, scale=scale, res_scale=0.1),
-            EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1),
-            EDSR(n_resblocks=16, n_feats=64, scale=scale, res_scale=0.1),
-        ]
-        for model_fp, autoencoder in zip(model_fps, AEs):
-            load_state(autoencoder, model_fp)
+        self.model_names = []
+        for model_fp in model_fps:
+            name, autoencoder = create_edsr(model_fp, map_location=torch.device('cpu'))
             model = MAML(autoencoder, lr=lr, first_order=True, allow_nograd=True).to(device)
             self.models.append(model)
+            self.model_names.append(name)
 
         self.loss = Loss.get(loss, device)
         self.model_names  = [m.split('.pt')[0] for m in model_fps]

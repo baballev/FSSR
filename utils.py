@@ -48,7 +48,7 @@ def clone_state(model):
     """Deep copy of the model's state."""
     return copy.deepcopy(model.state_dict())
 
-def load_state(model, fp):
+def load_state(model, fp, **kwargs):
     """Load weights located in file fp onto the model."""
-    weights = torch.load(fp)
+    weights = torch.load(fp, **kwargs)
     model.load_state_dict(weights)
