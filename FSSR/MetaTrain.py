@@ -10,10 +10,10 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class MetaTrain(Train):
     def __init__(self, train_fp, valid_fps, load=None, scale=2, shots=10, nb_tasks=1, lr=0.001,
-        meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=8, n_feats=64, wandb=False):
-        super(MetaTrain, self).__init__(wandb)
+        meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=16, n_feats=64, wandb=False):
+        super(MetaTrain, self).__init__('meta!' if wandb else None)
 
-        model = EDSR(n_resblocks, n_feats, scale)
+        model = EDSR(n_resblocks, n_feats, scale, res_scale=0.1)
         if load:
             load_state(model, load)
 
@@ -84,7 +84,7 @@ class MetaTrain(Train):
         model = 'EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale)
         dataset = str(self.train_dl).replace('_', '-')
 
-        self._str = '%s%s[%s_%s_t%s_s%s' % (prefix, model, 'meta', dataset, bs, shots)
+        self._str = '%s%s[%s_%s_t%s_s%s' % (prefix, model, 'meta', dataset, self.nb_tasks, shots)
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
                    + 'valid sets: \n' \

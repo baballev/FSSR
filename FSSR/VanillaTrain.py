@@ -21,12 +21,12 @@ class VanillaTrain(Train):
         self.loss = Loss.get(loss, device)
 
         train_set = BasicDataset.preset(train_fp, scale=scale, size=size)
-        self.train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
+        self.train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=6, pin_memory=True)
 
         self.valid_dls = []
         for valid_fp in valid_fps:
             valid_set = BasicDataset.preset(valid_fp, scale=scale, size=size)
-            valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2)
+            valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2, pin_memory=True)
             self.valid_dls.append(valid_dl)
 
         self.summarize(load, scale, bs, lr, loss, n_resblocks, n_feats)
@@ -59,7 +59,7 @@ class VanillaTrain(Train):
         model = 'EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale)
         dataset = str(self.train_dl).replace('_', '-')
 
-        self._str '%s%s[%s_%s_bs%s' % (prefix, model, 'vanilla', dataset, bs)
+        self._str = '%s%s[%s_%s_bs%s' % (prefix, model, 'vanilla', dataset, bs)
 
         self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
                    + 'valid sets: \n' \

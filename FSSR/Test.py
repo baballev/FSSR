@@ -26,13 +26,13 @@ class Test(Run):
         self.psnr = PSNR(edge=6 + scale)
 
         test_set = BasicDataset.preset(test_fp, scale=scale, size=size)
-        self.test_dl = DataLoader(test_set, batch_size=shots + 1, num_workers=4, shuffle=True)
+        self.test_dl = DataLoader(test_set, batch_size=shots + 1, num_workers=4, shuffle=False, pin_memory=True)
 
         self.summarize(shots, lr, loss, scale)
 
 
     def __call__(self, update_steps):
-        super().prepare('%s_e%s]' % (self, update_steps))
+        super().prepare('%s_u%s]' % (self, update_steps))
 
         for j, data in enumerate(self.test_dl):
             x, y = [d.to(device) for d in data]
@@ -40,8 +40,8 @@ class Test(Run):
             x_spt, x_qry = x[:-1], x[-1:]
 
             example = [
-                wandb.Image(x_qry[0].cpu(), caption='input'),
-                wandb.Image(y_qry[0].cpu(), caption='HR'),
+                wandb.Image(x_qry[0].cpu(), caption='LR'),
+                wandb.Image(y_qry[0].cpu(), caption='HR (L1 / PSNR)'),
             ]
             for i, (model, name) in enumerate(zip(self.models, self.model_names)):
                 cloned = model.clone()
@@ -55,9 +55,9 @@ class Test(Run):
                 self.log({name: loss_q.item()})
 
                 if j < 4:
-                    psnr = self.psnr(y_qry_hat, y_qry)
+                    psnr = self.psnr(y_qry_hat[0], y_qry[0])
                     img = wandb.Image(y_qry_hat[0].cpu(),
-                        caption='y_model(%i) (%.4f / %.2f db)' % (name, loss_q.item(), psnr))
+                        caption='y_model(%i) (%.4f / %.2f dB)' % (i, loss_q.item(), psnr))
                     example.append(img)
 
             if j < 4:
@@ -68,7 +68,7 @@ class Test(Run):
         models_concat = 'vs'.join(self.model_names)
         dataset = str(self.test_dl).replace('_', '-')
 
-        self._str = '%s[%s_%s_s%s' % (models_concat, 'test', datasets, shots)
+        self._str = '%s[%s_%s_s%s' % (models_concat, 'test', dataset, shots)
 
         self._repr = 'evaluated models : \n' \
                    + ''.join(['    %s \n' % m for m in self.model_names]) \

@@ -1,11 +1,12 @@
 """CLI runner file."""
 def main(opt, require):
     from FSSR import VanillaTrain, MetaTrain, Test
-
+    
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
         run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
-            scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss, wandb=not opt.no_wandb)
+            scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss, size=opt.resize, 
+            wandb=not opt.no_wandb)
 
         run(epochs=opt.epochs)
 

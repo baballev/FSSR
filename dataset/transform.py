@@ -50,15 +50,16 @@ def augment(flag, size):
         p.flip_left_right(probability=0.5)
         p.zoom_random(probability=0.2, percentage_area=0.8)
         p.flip_top_bottom(probability=0.3)
-        p.crop_by_size(probability=0.5, width=size[1], height=size[0], centre=False)
-        p.resize(probability=1, width=size[1], height=size[0])
+        p.crop_by_size(probability=1, width=size[1], height=size[0], centre=False)
+        # p.resize(probability=1, width=size[1], height=size[0])
     else:
+        #p.crop_by_size(probability=1, width=size[1], height=size[0], centre=True)
         p.resize(probability=1, width=size[1], height=size[0])
     return p.torch_transform()
 
 
 def style_filter(b, c, s, h):
-    # RandomGrayscale(p=0.02, num_channels=3),
+    #return RandomGrayscale(p=1, num_channels=3)
     return ColorJitter(brightness=b, contrast=c, saturation=s, hue=h)
 
 def resize(size):
