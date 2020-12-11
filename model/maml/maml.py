@@ -174,3 +174,6 @@ class MAML(BaseLearner):
             allow_nograd = self.allow_nograd
         return MAML(clone_module(self.module), lr=self.lr, first_order=first_order,
             allow_unused=allow_unused, allow_nograd=allow_nograd)
+
+    def state_dict(self):
+        return self.module.state_dict()
