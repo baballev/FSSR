@@ -26,7 +26,8 @@ class Test(Run):
         self.psnr = PSNR(edge=6 + scale)
 
         test_set = BasicDataset.preset(test_fp, scale=scale, size=size)
-        self.test_dl = DataLoader(test_set, batch_size=shots + 1, num_workers=4, shuffle=False, pin_memory=True)
+        self.test_dl = DataLoader(test_set, batch_size=shots + 1, num_workers=4, 
+            shuffle=False, pin_memory=True)
 
         self.summarize(shots, lr, loss, scale)
 

@@ -18,17 +18,17 @@ class MetaTrain(Train):
             load_state(model, load)
 
         self.model = MAML(model, lr=meta_lr, first_order=True, allow_nograd=True).to(device)
-        self.optim = optim.SGD(self.model.parameters(), lr=lr)
+        self.optim = optim.SGD(self.model.parameters(), lr=lr, weight_decay=0.0001)
         self.loss = Loss.get(loss, device)
         self.nb_tasks = nb_tasks
 
         train_set = TaskDataset.preset(train_fp, scale=scale, size=size, shots=shots)
-        self.train_dl = DataLoader(train_set, batch_size=nb_tasks, shuffle=True, num_workers=4)
+        self.train_dl = DataLoader(train_set, batch_size=nb_tasks, shuffle=True, num_workers=4, pin_memory=True)
 
         self.valid_dls = []
         for valid_fp in valid_fps:
             valid_set = TaskDataset.preset(valid_fp, scale=scale, size=size, shots=shots)
-            valid_dl = DataLoader(valid_set, batch_size=1, shuffle=True, num_workers=2)
+            valid_dl = DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)
             self.valid_dls.append(valid_dl)
 
         self.summarize(load, scale, lr, meta_lr, shots, loss, n_resblocks, n_feats)

@@ -3,7 +3,7 @@ def main(opt, require):
     from FSSR import VanillaTrain, MetaTrain, Test
     
     if opt.mode == 'vanilla-train':
-        require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
+        require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs', 'learning_rate')
         run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
             scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss, size=opt.resize, 
             wandb=not opt.no_wandb)
@@ -11,7 +11,8 @@ def main(opt, require):
         run(epochs=opt.epochs)
 
     elif opt.mode == 'meta-train':
-        require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs')
+        require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs', 'nb_shots', 
+            'update_steps', 'update_test_steps', 'learning_rate', 'meta_learning_rate')
         run = MetaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
             scale=opt.scale, shots=opt.nb_shots, nb_tasks=opt.batch_size, lr=opt.learning_rate,
             meta_lr=opt.meta_learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
@@ -19,11 +20,11 @@ def main(opt, require):
         run(epochs=opt.epochs, update_steps=opt.update_steps, update_test_steps=opt.update_test_steps)
 
     elif opt.mode == 'models-test':
-        require('valid_folders', 'models', 'scale', 'nb_shots', 'update_steps')
-        run = Test(model_fps=opt.models, test_fp=opt.valid_folders[0], scale=opt.scale, shots=opt.nb_shots,
-            lr=opt.learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
+        require('valid_folders', 'models', 'scale', 'nb_shots', 'update_test_steps', 'learning_rate')
+        run = Test(model_fps=opt.models, test_fp=opt.valid_folders[0], scale=opt.scale, 
+            shots=opt.nb_shots, lr=opt.learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
 
-        run(update_steps=opt.update_steps)
+        run(update_steps=opt.update_test_steps)
 
 
 if __name__ == "__main__":
@@ -32,8 +33,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
 
-    parser.add_argument('mode', choices=['vanilla-train', 'meta-train', 'models-test', \
-        'meta-upscale', 'finetune-maml', 'evaluation', 'upscale-video', 'upscale'],
+    parser.add_argument('mode', choices=['vanilla-train', 'meta-train', 'models-test'],
         help="The name of the mode to run")
     parser.add_argument('--batch-size', type=int,
         help='The number of images for each training iteration as an integer.')
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         help='The scaling factor for an upscaling task.')
     parser.add_argument('--epochs', type=int,
         help='Number of epochs for training i.e number of times the training set is iterated over.')
-    parser.add_argument('--nb-shots', default=10, type=int,
+    parser.add_argument('--nb-shots', type=int,
         help='Number of shots in each task.')
     parser.add_argument('--loss', default='L1', choices=['VGG', 'L1', 'L2'],
         help='Loss function used for training the model.')
@@ -51,13 +51,13 @@ if __name__ == "__main__":
         help='Dataset preset name name or path validation set directory.')
     parser.add_argument('--load-weights',
         help='Path to the weight file for finetuning.')
-    parser.add_argument('--learning-rate', default=0.0001, type=float,
+    parser.add_argument('--learning-rate', type=float,
         help='Learning rate for training.')
-    parser.add_argument('--meta-learning-rate', default=0.0001, type=float,
+    parser.add_argument('--meta-learning-rate', type=float,
         help='Learning rate of the meta training.')
-    parser.add_argument('--update-steps', default=10, type=int,
+    parser.add_argument('--update-steps', type=int,
         help='For meta-learning: number of gradient updates when finetuning during training.')
-    parser.add_argument('--update-test-steps', default=10, type=int,
+    parser.add_argument('--update-test-steps', type=int,
         help='For meta-learning: number of gradient updates when finetuning during validation.')
     parser.add_argument('--no-wandb', action="store_true", default=False,
         help='Whether or not to record the run with wandb.')

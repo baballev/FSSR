@@ -9,7 +9,7 @@ from utils import list_images, fetch_image
 
 class TaskDataset(DatasetWrapper):
     """Style-based task segmentation of the dataset."""
-    style_params = {'b': 0.2, 'c': 0.2, 's': 0.2, 'h': 0.1}
+    style_params = {'b': 0.5, 'c': 0.5, 's': 0.5, 'h': 0.5}
 
     def __init__(self, fp, scale, size, shots, augment=False, style=False):
         self.fp = fp
