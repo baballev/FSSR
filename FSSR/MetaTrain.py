@@ -21,9 +21,10 @@ class MetaTrain(Train):
         self.optim = optim.SGD(self.model.parameters(), lr=lr, weight_decay=0.0001)
         self.loss = Loss.get(loss, device)
         self.nb_tasks = nb_tasks
-
+    
         train_set = TaskDataset.preset(train_fp, scale=scale, size=size, shots=shots)
         self.train_dl = DataLoader(train_set, batch_size=nb_tasks, shuffle=True, num_workers=4, pin_memory=True)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, len(self.train_dl))
 
         self.valid_dls = []
         for valid_fp in valid_fps:
@@ -54,13 +55,16 @@ class MetaTrain(Train):
                 cloned.adapt(loss_spt)
 
                 y_qry_hat = cloned(x_qry[i])
-                loss_qry = self.loss(y_qry_hat, y_qry[i])
+            loss_qry = self.loss(y_qry_hat, y_qry[i]) # un-indented
             loss_q += loss_qry
         loss_q /= self.nb_tasks
 
         self.optim.zero_grad()
         loss_q.backward()
         self.optim.step()
+        self.scheduler.step()
+        
+        self.log({'lr': self.scheduler.get_last_lr()[0]})
         return loss_q.item()
 
 
@@ -75,7 +79,7 @@ class MetaTrain(Train):
             cloned.adapt(loss_spt)
 
             y_qry_hat = cloned(x_qry[0])
-            loss_q = self.loss(y_qry_hat, y_qry[0])
+            loss_q = self.loss(y_qry_hat, y_qry[0]) # for every loop, ain't leakin?
         return loss_q.item()
 
 
