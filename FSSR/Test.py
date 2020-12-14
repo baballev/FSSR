@@ -35,6 +35,7 @@ class Test(Run):
     def __call__(self, update_steps):
         super().prepare('%s_u%s]' % (self, update_steps))
 
+        psnrs = {name: 0. for name in self.model_names}
         for j, data in enumerate(self.test_dl):
             x, y = [d.to(device) for d in data]
             y_spt, y_qry = y[:-1], y[-1:]
@@ -53,16 +54,20 @@ class Test(Run):
 
                 y_qry_hat = cloned(x_qry)
                 loss_q = self.loss(y_qry_hat, y_qry)
+                psnr = self.psnr(y_qry_hat[0], y_qry[0])
+               
                 self.log({name: loss_q.item()})
-
-                if j < 4:
-                    psnr = self.psnr(y_qry_hat[0], y_qry[0])
+                psnrs[name] += psnr.item()
+                if j < 6:
                     img = wandb.Image(y_qry_hat[0].cpu(),
-                        caption='y_model(%i) (%.4f / %.2f dB)' % (i, loss_q.item(), psnr))
+                        caption='y_model(%i) (%.4f / %.2f dB)' % (i, loss_q.item(), psnr.item()))
                     example.append(img)
 
-            if j < 4:
+            if j < 6:
                 self.log({'img_%i' % j: example})
+        
+        for model, psnr in psnrs.items():
+            print('%s avg PSNR = %.2f dB' % (model, psnr/len(self.test_dl)))
 
 
     def summarize(self, shots, lr, loss, scale):
