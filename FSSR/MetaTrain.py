@@ -4,12 +4,12 @@ import torch.optim as optim
 from .Train import Train
 from utils import load_state
 from model import MAML, EDSR, Loss
-from dataset import TaskDataset, DataLoader
+from dataset import ClusterDataset, DataLoader, get_clusters
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class MetaTrain(Train):
-    def __init__(self, train_fp, valid_fps, load=None, scale=2, shots=10, nb_tasks=1, lr=0.001,
+    def __init__(self, dataset_fp, clusters_fp, load=None, scale=2, shots=10, nb_tasks=1, lr=0.001,
         meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=16, n_feats=64, wandb=False):
         super(MetaTrain, self).__init__('meta!' if wandb else None)
 
@@ -21,17 +21,15 @@ class MetaTrain(Train):
         self.optim = optim.SGD(self.model.parameters(), lr=lr, weight_decay=0.0001)
         self.loss = Loss.get(loss, device)
         self.nb_tasks = nb_tasks
-    
-        train_set = TaskDataset.preset(train_fp, scale=scale, size=size, shots=shots)
+
+        train_clusters, valid_clusters = get_clusters(clusters_fp, split=0.1, shuffle=False)
+
+        train_set = ClusterDataset.preset(dataset_fp, clusters=train_clusters, scale=scale, size=size, shots=shots)
         self.train_dl = DataLoader(train_set, batch_size=nb_tasks, shuffle=True, num_workers=4, pin_memory=True)
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, len(self.train_dl))
-
-        self.valid_dls = []
-        for valid_fp in valid_fps:
-            valid_set = TaskDataset.preset(valid_fp, scale=scale, size=size, shots=shots)
-            valid_dl = DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)
-            self.valid_dls.append(valid_dl)
-
+        valid_set = ClusterDataset.preset(dataset_fp, clusters=valid_clusters, augment=False, scale=scale, size=size, shots=shots)
+        self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)]
+        print(self.valid_dls[0])
+        # self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, len(self.train_dl))
         self.summarize(load, scale, lr, meta_lr, shots, loss, n_resblocks, n_feats)
 
 
@@ -55,16 +53,16 @@ class MetaTrain(Train):
                 cloned.adapt(loss_spt)
 
                 y_qry_hat = cloned(x_qry[i])
-            loss_qry = self.loss(y_qry_hat, y_qry[i]) # un-indented
+            loss_qry = self.loss(y_qry_hat, y_qry[i])
             loss_q += loss_qry
         loss_q /= self.nb_tasks
 
         self.optim.zero_grad()
         loss_q.backward()
         self.optim.step()
-        self.scheduler.step()
-        
-        self.log({'lr': self.scheduler.get_last_lr()[0]})
+        # self.scheduler.step()
+        # self.log({'lr': self.scheduler.get_last_lr()[0]})
+       
         return loss_q.item()
 
 
