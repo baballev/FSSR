@@ -22,7 +22,7 @@ class DatasetWrapper(Dataset):
 
     def __repr__(self):
         """Dataset reprensentation trace."""
-        string = str(self) \
+        string = '%s@%s' % (type(self).__name__, str(self)) \
                + ' ' + '-'.join(['(%ix%i)' % (h, w) for h, w in self.sizes]) \
                + ' augmentation<%s>' % (self.augment_name if self.augment_name else 'OFF') \
                + ' style<%s>' % (self.style_params if self.style else 'OFF')
@@ -30,12 +30,12 @@ class DatasetWrapper(Dataset):
 
     @classmethod
     def preset(cls, name, **kwargs):
-        """BasicDataset presets"""
+        opt = {}
         if 'TORCHVISION' in name:
-            kwargs['augment'] = 'torchvision'
+            opt['augment'] = 'torchvision'
         if 'AUGMENTOR' in name:
-            kwargs['augment'] = 'augmentor'
+            opt['augment'] = 'augmentor'
         if 'STYLE' in name:
-            kwargs['style'] = True
+            opt['style'] = True
         fp = name.split('#')[0]
-        return cls(fp, **kwargs)
+        return cls(fp, **{**opt, **kwargs})
