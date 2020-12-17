@@ -11,9 +11,9 @@ def main(opt, require):
         run(epochs=opt.epochs)
 
     elif opt.mode == 'meta-train':
-        require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs', 'nb_shots', 
+        require('train_folder', 'clusters', 'scale', 'batch_size', 'epochs', 'nb_shots', 
             'update_steps', 'update_test_steps', 'learning_rate', 'meta_learning_rate')
-        run = MetaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
+        run = MetaTrain(dataset_fp=opt.train_folder, clusters_fp=opt.clusters, load=opt.load_weights,
             scale=opt.scale, shots=opt.nb_shots, nb_tasks=opt.batch_size, lr=opt.learning_rate,
             meta_lr=opt.meta_learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
 
@@ -49,6 +49,8 @@ if __name__ == "__main__":
         help='Dataset preset name name or path training set directory.')
     parser.add_argument('--valid-folders', nargs='+', type=str,
         help='Dataset preset name name or path validation set directory.')
+    parser.add_argument('--clusters', type=str,
+        help='File containing clusters for a dataset.')
     parser.add_argument('--load-weights',
         help='Path to the weight file for finetuning.')
     parser.add_argument('--learning-rate', type=float,
