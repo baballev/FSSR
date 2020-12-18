@@ -62,3 +62,16 @@ class Train(Run):
             print('valid_loss(%s): %.4f' % (valid_dl, loss_avg))
             valid_loss.append(loss_avg)
         return valid_loss
+
+
+    def step_lr(self):
+        if self.scheduler:
+            self.scheduler.step()
+            self.log({'lr': self.scheduler.get_last_lr()[0]})
+
+
+    def get_lr(self):
+        if self.scheduler:
+            return self.scheduler.get_last_lr()[0]
+        else:
+            return self.lr

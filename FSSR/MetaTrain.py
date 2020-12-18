@@ -10,7 +10,9 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class MetaTrain(Train):
     def __init__(self, dataset_fp, clusters_fp, load=None, scale=2, shots=10, nb_tasks=1, lr=0.001,
-        meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=16, n_feats=64, wandb=False):
+        meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=16, n_feats=64, lr_annealing=None,
+        wandb=False):
+
         super(MetaTrain, self).__init__('meta!' if wandb else None)
 
         model = EDSR(n_resblocks, n_feats, scale, res_scale=0.1)
@@ -28,8 +30,10 @@ class MetaTrain(Train):
         self.train_dl = DataLoader(train_set, batch_size=nb_tasks, shuffle=True, num_workers=4, pin_memory=True)
         valid_set = ClusterDataset.preset(dataset_fp, clusters=valid_clusters, augment=False, scale=scale, size=size, shots=shots)
         self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)]
-        print(self.valid_dls[0])
-        # self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, len(self.train_dl))
+
+        if lr_annealing:
+            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, lr_annealing*len(self.train_dl))
+
         self.summarize(load, scale, lr, meta_lr, shots, loss, n_resblocks, n_feats)
 
 
@@ -60,9 +64,6 @@ class MetaTrain(Train):
         self.optim.zero_grad()
         loss_q.backward()
         self.optim.step()
-        # self.scheduler.step()
-        # self.log({'lr': self.scheduler.get_last_lr()[0]})
-       
         return loss_q.item()
 
 

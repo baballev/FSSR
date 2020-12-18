@@ -1,27 +1,28 @@
 """CLI runner file."""
 def main(opt, require):
     from FSSR import VanillaTrain, MetaTrain, Test
-    
+
     if opt.mode == 'vanilla-train':
         require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs', 'learning_rate')
         run = VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, load=opt.load_weights,
-            scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss, size=opt.resize, 
+            scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, loss=opt.loss, size=opt.resize,
             wandb=not opt.no_wandb)
 
         run(epochs=opt.epochs)
 
     elif opt.mode == 'meta-train':
-        require('train_folder', 'clusters', 'scale', 'batch_size', 'epochs', 'nb_shots', 
+        require('train_folder', 'clusters', 'scale', 'batch_size', 'epochs', 'nb_shots',
             'update_steps', 'update_test_steps', 'learning_rate', 'meta_learning_rate')
         run = MetaTrain(dataset_fp=opt.train_folder, clusters_fp=opt.clusters, load=opt.load_weights,
             scale=opt.scale, shots=opt.nb_shots, nb_tasks=opt.batch_size, lr=opt.learning_rate,
-            meta_lr=opt.meta_learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
+            meta_lr=opt.meta_learning_rate, size=opt.resize, loss=opt.loss,
+            lr_annealing=opt.lr_annealing, wandb=not opt.no_wandb)
 
         run(epochs=opt.epochs, update_steps=opt.update_steps, update_test_steps=opt.update_test_steps)
 
     elif opt.mode == 'models-test':
         require('valid_folders', 'models', 'scale', 'nb_shots', 'update_test_steps', 'learning_rate')
-        run = Test(model_fps=opt.models, test_fp=opt.valid_folders[0], scale=opt.scale, 
+        run = Test(model_fps=opt.models, test_fp=opt.valid_folders[0], scale=opt.scale,
             shots=opt.nb_shots, lr=opt.learning_rate, size=opt.resize, loss=opt.loss, wandb=not opt.no_wandb)
 
         run(update_steps=opt.update_test_steps)
@@ -57,6 +58,8 @@ if __name__ == "__main__":
         help='Learning rate for training.')
     parser.add_argument('--meta-learning-rate', type=float,
         help='Learning rate of the meta training.')
+    parser.add_argument('--lr-annealing', type=float,
+        help='Max number of iterations until learning rate reaches zero. No decay if set to None. As fraction of training set size.')
     parser.add_argument('--update-steps', type=int,
         help='For meta-learning: number of gradient updates when finetuning during training.')
     parser.add_argument('--update-test-steps', type=int,
