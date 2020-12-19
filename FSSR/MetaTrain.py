@@ -9,49 +9,46 @@ from dataset import ClusterDataset, DataLoader, get_clusters
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class MetaTrain(Train):
-    def __init__(self, dataset_fp, clusters_fp, load=None, scale=2, shots=10, nb_tasks=1, lr=0.001,
-        meta_lr=0.0001, size=(256, 512), loss='L1', n_resblocks=16, n_feats=64, lr_annealing=None,
-        wandb=False):
+    def __init__(self, opt):
+        super(MetaTrain, self).__init__(mode='meta', options=opt,
+            requires=['train_set', 'clusters', 'load', 'scale', 'shots', 'nb_tasks', 'lr', 'meta_lr',
+                'size', 'loss', 'n_resblocks', 'n_feats', 'lr_annealing', 'weight_decay', 'epochs', 
+                'update_steps', 'update_test_steps', 'wandb'])
 
-        super(MetaTrain, self).__init__('meta!' if wandb else None)
+        model = EDSR(opt.n_resblocks, opt.n_feats, opt.scale, res_scale=0.1)
+        if opt.load:
+            load_state(model, opt.load)
 
-        model = EDSR(n_resblocks, n_feats, scale, res_scale=0.1)
-        if load:
-            load_state(model, load)
+        self.model = MAML(model, lr=opt.meta_lr, first_order=True, allow_nograd=True).to(device)
+        self.optim = optim.SGD(self.model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
+        self.loss = Loss.get(opt.loss, device)
 
-        self.model = MAML(model, lr=meta_lr, first_order=True, allow_nograd=True).to(device)
-        self.optim = optim.SGD(self.model.parameters(), lr=lr, weight_decay=0.0001)
-        self.loss = Loss.get(loss, device)
-        self.nb_tasks = nb_tasks
+        train_clusters, valid_clusters = get_clusters(opt.clusters, split=0.1, shuffle=False)
 
-        train_clusters, valid_clusters = get_clusters(clusters_fp, split=0.1, shuffle=False)
+        train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
+            size=opt.size, shots=opt.shots)
+        self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=4)
 
-        train_set = ClusterDataset.preset(dataset_fp, clusters=train_clusters, scale=scale, size=size, shots=shots)
-        self.train_dl = DataLoader(train_set, batch_size=nb_tasks, shuffle=True, num_workers=4, pin_memory=True)
-        valid_set = ClusterDataset.preset(dataset_fp, clusters=valid_clusters, augment=False, scale=scale, size=size, shots=shots)
-        self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2, pin_memory=True)]
+        # change this to another dataset
+        valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
+            augment=False, size=opt.size, shots=opt.shots)
+        self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2)]
 
-        if lr_annealing:
-            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, lr_annealing*len(self.train_dl))
+        if opt.lr_annealing is not None:
+            opt.lr_annealing = int(opt.lr_annealing*len(self.train_dl))
+            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, opt.lr_annealing)
 
-        self.summarize(load, scale, lr, meta_lr, shots, loss, n_resblocks, n_feats)
-
-
-    def __call__(self, epochs, update_steps, update_test_steps):
-        super().__call__(
-            epochs=epochs,
-            update_steps=update_steps,
-            update_test_steps=update_test_steps,
-            name='%s_e%i_u%i]' % (self, epochs, update_steps))
+        self.epochs = opt.epochs
+        self.summarize(**vars(opt))
 
 
-    def train_batch(self, batch, update_steps, **_):
+    def train_batch(self, batch):
         x_spt, y_spt, x_qry, y_qry = [v.to(device) for v in batch]
 
         loss_q = 0
-        for i in range(self.nb_tasks):
+        for i in range(self.opt.nb_tasks):
             cloned = self.model.clone()
-            for k in range(update_steps):
+            for k in range(self.opt.update_steps):
                 y_spt_hat = cloned(x_spt[i])
                 loss_spt = self.loss(y_spt_hat, y_spt[i])
                 cloned.adapt(loss_spt)
@@ -59,7 +56,7 @@ class MetaTrain(Train):
                 y_qry_hat = cloned(x_qry[i])
             loss_qry = self.loss(y_qry_hat, y_qry[i])
             loss_q += loss_qry
-        loss_q /= self.nb_tasks
+        loss_q /= self.opt.nb_tasks
 
         self.optim.zero_grad()
         loss_q.backward()
@@ -67,35 +64,46 @@ class MetaTrain(Train):
         return loss_q.item()
 
 
-    def validate_batch(self, model, batch, update_test_steps, **_):
+    def validate_batch(self, model, batch):
         x_spt, y_spt, x_qry, y_qry = [v.to(device) for v in batch]
         assert x_spt.shape[0] == 1, 'Can only be one task per batch on validation'
 
         cloned = model.clone()
-        for k in range(update_test_steps):
+        for k in range(self.opt.update_test_steps):
             y_spt_hat = cloned(x_spt[0])
             loss_spt = self.loss(y_spt_hat, y_spt[0])
             cloned.adapt(loss_spt)
 
             y_qry_hat = cloned(x_qry[0])
-            loss_q = self.loss(y_qry_hat, y_qry[0]) # for every loop, ain't leakin?
+            loss_q = self.loss(y_qry_hat, y_qry[0])
         return loss_q.item()
 
 
-    def summarize(self, load, scale, lr, meta_lr, shots, loss, n_resblocks, n_feats):
-        prefix = '' if load is None else load.split('.pt')[0]
-        model = 'EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale)
+    def summarize(self, clusters, load, scale, shots, nb_tasks, lr, meta_lr, size, loss, epochs, 
+        n_resblocks, n_feats, lr_annealing, weight_decay, update_steps, update_test_steps, **_):
+
+        prefix = load.split('.pt')[0] if type(load) is str else ''
+        model = 'r%if%ix%i' % (n_resblocks, n_feats, scale)
         dataset = str(self.train_dl).replace('_', '-')
 
-        self._str = '%s%s[%s_%s_t%s_s%s' % (prefix, model, 'meta', dataset, self.nb_tasks, shots)
+        self._str = '%s%s[%s_%s_lr%s%s_mlr%s_t%s_s%s_u%i]' % (prefix, model, self.mode, dataset, 
+            ('%.e' % lr).replace('-0', ''), ('d' if lr_annealing else ''), 
+            ('%.e' % meta_lr).replace('-0', ''), nb_tasks, shots, update_steps)
 
-        self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
+        self._repr = 'run name: %s \n' % self \
+                   + 'train set: \n   %s \n' % repr(self.train_dl) \
                    + 'valid sets: \n' \
                    +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
-                   + 'finetuning: %s \n' % ('from %s' % load if load else 'False') \
+                   + 'finetuning: %s \n' % (load if load else 'False') \
                    + 'scale factor: %i \n' % scale \
-                   + 'tasks per update: %i \n' % self.nb_tasks \
+                   + 'lr (outer loop): %s \n' % lr \
+                   + 'lr decay: %s \n' % (('anneals every %i steps' % lr_annealing) if lr_annealing else 'No') \
+                   + 'meta-lr (inner-loop): %s \n' % meta_lr \
+                   + 'weight decay: %s \n' % ('none' if weight_decay == 0 else weight_decay) \
+                   + 'loss function: %s \n' % loss \
+                   + 'tasks per update: %i \n' % nb_tasks \
                    + 'number of shots: %i \n' % shots \
-                   + 'learning rate: %s \n' % lr \
-                   + 'meta-learning rate: %s \n' % meta_lr \
-                   + 'loss function: %s \n' % loss
+                   + 'updates steps (train): %i \n' % update_steps \
+                   + 'update steps (validation): %i \n' % update_test_steps \
+                   + 'epochs: %i ' % epochs \
+                   + '(%i steps)' % (epochs*len(self.train_dl))
