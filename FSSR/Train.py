@@ -8,14 +8,14 @@ from .Run import Run
 from utils import clone_state, clone
 
 class Train(Run):
+    def __init__(self, *args, **kwargs):
+        super(Train, self).__init__(*args, **kwargs)
+        self.scheduler = None
+
     def __call__(self, debug):
-        if debug:
-            return print(repr(self))
+        super().__call__(debug)
 
-        super().prepare()
-
-        best_model = clone_state(self.model)
-        best_loss = math.inf
+        best = clone_state(self.model), math.inf, -1
         train_losses, valid_losses = [], []
         for epoch in range(self.epochs):
             self.log('Epoch %i/%i' % (epoch + 1, self.epochs))
@@ -26,17 +26,14 @@ class Train(Run):
             valid_losses.append(valid_loss)
 
             eval_loss = mean(valid_loss)
-            if eval_loss <= best_loss:
-                best_loss = eval_loss
-                best_model = clone_state(self.model)
+            if eval_loss <= best[1]:
+                best = clone_state(self.model), eval_loss, epoch + 1
 
-        self.log('train_loss(%s): %s' \
-            % (self.train_dl, [round(x, 4) for x in train_losses]), file=True)
+        self.log('train_loss(%s): %s' % (self.train_dl, [round(x, 4) for x in train_losses]))
         for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
-            self.log('valid_loss(%s): %s' \
-                % (valid_dl, [round(x, 4) for x in losses]), file=True)
+            self.log('valid_loss(%s): %s' % (valid_dl, [round(x, 4) for x in losses]))
 
-        # super().terminate(best_model)
+        super().terminate(*best)
 
 
     def train(self):
