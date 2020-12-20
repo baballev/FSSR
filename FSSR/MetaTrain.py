@@ -24,21 +24,21 @@ class MetaTrain(Train):
         self.loss = Loss.get(opt.loss, device)
 
         train_clusters, valid_clusters = get_clusters(opt.clusters, split=0.1, shuffle=False)
-
+        
         train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
             size=opt.size, shots=opt.shots)
         self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=4)
 
-        # change this to another dataset
         valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
             augment=False, size=opt.size, shots=opt.shots)
         self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2)]
 
-        if opt.lr_annealing is not None:
+        if opt.lr_annealing:
             opt.lr_annealing = int(opt.lr_annealing*len(self.train_dl))
             self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, opt.lr_annealing)
 
         self.epochs = opt.epochs
+        self.lr = opt.lr
         self.summarize(**vars(opt))
 
 
@@ -46,7 +46,7 @@ class MetaTrain(Train):
         x_spt, y_spt, x_qry, y_qry = [v.to(device) for v in batch]
 
         loss_q = 0
-        for i in range(self.opt.nb_tasks):
+        for i in range(x_spt.shape[0]):
             cloned = self.model.clone()
             for k in range(self.opt.update_steps):
                 y_spt_hat = cloned(x_spt[i])
