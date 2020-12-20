@@ -18,12 +18,19 @@ class Run:
         self.require(requires)
 
 
-    def prepare(self):
+    def __call__(self, debug):
+        if debug:
+            return print(repr(self))
+
         if self.wandb:
             wandb.init(project=self.wandb, name=str(self), notes=repr(self))
             if self.model is not None:
                 wandb.watch(self.model)
 
+    
+    def terminate(self, model, loss, epoch):
+        save_state(model, '%s_%i.pth' % (self, epoch))
+    
 
     def log(self, payload):
         if (type(payload) is dict and self.wandb):

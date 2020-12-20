@@ -74,7 +74,7 @@ if __name__ == "__main__":
         help='Will prevent run from starting and print a summary of the options.')
 
     opt = parser.parse_args()
-    opt.wandb = None if opt.no_wandb else opt.wandb
+    opt.wandb = False if opt.no_wandb else opt.wandb
     assert len(opt.size) == 0 or len(opt.size) == 2
 
     main(opt)
