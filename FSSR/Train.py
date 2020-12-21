@@ -8,54 +8,52 @@ from .Run import Run
 from utils import clone_state, clone
 
 class Train(Run):
-    def __init__(self, wandb):
-        super(Train, self).__init__(wandb='train!' if wandb else None)
+    def __init__(self, *args, **kwargs):
+        super(Train, self).__init__(*args, **kwargs)
+        self.scheduler = None
 
-    def __call__(self, name, epochs, **kwargs):
-        super().prepare(name)
+    def __call__(self, debug):
+        super().__call__(debug)
 
-        best_model = clone_state(self.model)
-        best_loss = math.inf
+        best = clone_state(self.model), math.inf, -1
         train_losses, valid_losses = [], []
-        for epoch in range(epochs):
-            self.log('Epoch %i/%i' % (epoch + 1, epochs))
-            train_loss = self.train(**kwargs)
+        for epoch in range(self.epochs):
+            self.log('Epoch %i/%i' % (epoch + 1, self.epochs))
+            train_loss = self.train()
             train_losses.append(train_loss)
 
-            valid_loss = self.validate(**kwargs)
+            valid_loss = self.validate()
             valid_losses.append(valid_loss)
 
             eval_loss = mean(valid_loss)
-            if eval_loss <= best_loss:
-                best_loss = eval_loss
-                best_model = clone_state(self.model)
+            if eval_loss <= best[1]:
+                best = clone_state(self.model), eval_loss, epoch + 1
 
-        self.log('train_loss(%s): %s' \
-            % (self.train_dl, [round(x, 4) for x in train_losses]), file=True)
+        self.log('train_loss(%s): %s' % (self.train_dl, [round(x, 4) for x in train_losses]))
         for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
-            self.log('valid_loss(%s): %s' \
-                % (valid_dl, [round(x, 4) for x in losses]), file=True)
+            self.log('valid_loss(%s): %s' % (valid_dl, [round(x, 4) for x in losses]))
 
-        super().terminate(best_model)
+        super().terminate(*best)
 
 
-    def train(self, **kwargs):
+    def train(self):
         losses = []
         for data in (t := tqdm(self.train_dl)):
-            loss = self.train_batch(data, **kwargs)
+            loss = self.train_batch(data)
             losses.append(loss)
+            self.step_lr()
             self.log({'train_loss_%s' % self.train_dl: loss})
             t.set_description('Train loss: %.4f (~%.4f)' % (loss, mean(losses)))
         return mean(losses)
 
 
-    def validate(self, **kwargs):
+    def validate(self):
         model = clone(self.model)
         valid_loss = []
         for valid_dl in self.valid_dls:
             losses = []
             for data in valid_dl:
-                loss = self.validate_batch(model, data, **kwargs)
+                loss = self.validate_batch(model, data)
                 losses.append(loss)
             loss_avg = mean(losses)
             self.log({'valid_loss_%s' % valid_dl: loss_avg})
@@ -67,7 +65,7 @@ class Train(Run):
     def step_lr(self):
         if self.scheduler:
             self.scheduler.step()
-            self.log({'lr': self.scheduler.get_last_lr()[0]})
+        self.log({'lr': self.get_lr()})
 
 
     def get_lr(self):

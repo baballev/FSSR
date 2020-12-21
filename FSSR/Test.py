@@ -11,29 +11,30 @@ from dataset import BasicDataset, DataLoader
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class Test(Run):
-    def __init__(self, model_fps, test_fp, scale, shots, lr, size, loss, wandb):
-        super(Test, self).__init__(wandb='test!' if wandb else None)
+    def __init__(self, opt):
+        super(Test, self).__init__(mode='eval', options=opt,
+            requires=['models', 'valid_sets', 'scale', 'shots', 'lr', 'size', 'loss', 
+                'update_steps', 'wandb'])
 
         self.models = []
         self.model_names = []
-        for model_fp in model_fps:
+        for model_fp in opt.models:
             name, autoencoder = create_edsr(model_fp, map_location=torch.device('cpu'))
-            model = MAML(autoencoder, lr=lr, first_order=True, allow_nograd=True).to(device)
+            model = MAML(autoencoder, lr=opt.lr, first_order=True, allow_nograd=True).to(device)
             self.models.append(model)
             self.model_names.append(name)
 
-        self.loss = Loss.get(loss, device)
-        self.psnr = PSNR(edge=6 + scale)
+        self.loss = Loss.get(opt.loss, device)
+        self.psnr = PSNR(edge=6 + opt.scale)
 
-        test_set = BasicDataset.preset(test_fp, scale=scale, size=size)
-        self.test_dl = DataLoader(test_set, batch_size=shots + 1, num_workers=4, 
-            shuffle=False, pin_memory=True)
+        test_set = BasicDataset.preset(opt.valid_sets[0], scale=opt.scale, size=opt.size)
+        self.test_dl = DataLoader(test_set, batch_size=opt.shots + 1, num_workers=4, shuffle=False)
 
-        self.summarize(shots, lr, loss, scale)
+        self.summarize(**vars(opt))
 
 
-    def __call__(self, update_steps):
-        super().prepare('%s_u%s]' % (self, update_steps))
+    def __call__(self, debug):
+        super().__call__(debug)
 
         psnrs = {name: 0. for name in self.model_names}
         for j, data in enumerate(self.test_dl):
@@ -41,13 +42,12 @@ class Test(Run):
             y_spt, y_qry = y[:-1], y[-1:]
             x_spt, x_qry = x[:-1], x[-1:]
 
-            example = [
-                wandb.Image(x_qry[0].cpu(), caption='LR'),
-                wandb.Image(y_qry[0].cpu(), caption='HR (L1 / PSNR)'),
-            ]
+            example = [wandb.Image(x_qry[0].cpu(), caption='LR'),
+                       wandb.Image(y_qry[0].cpu(), caption='HR (L1 / PSNR)')]
+
             for i, (model, name) in enumerate(zip(self.models, self.model_names)):
                 cloned = model.clone()
-                for k in range(update_steps):
+                for k in range(self.opt.update_steps):
                     y_spt_hat = cloned(x_spt)
                     loss_spt = self.loss(y_spt_hat, y_spt)
                     cloned.adapt(loss_spt)
@@ -66,20 +66,20 @@ class Test(Run):
             if j < 6:
                 self.log({'img_%i' % j: example})
         
-        for model, psnr in psnrs.items():
-            print('%s avg PSNR = %.2f dB' % (model, psnr/len(self.test_dl)))
+        for i, (model, psnr) in enumerate(psnrs.items()):
+            print('model(%i) avg PSNR = %.2f dB \n  %s' % (i, psnr/len(self.test_dl), model))
 
 
-    def summarize(self, shots, lr, loss, scale):
+    def summarize(self, shots, lr, loss, scale, update_steps, **_):
         models_concat = 'vs'.join(self.model_names)
         dataset = str(self.test_dl).replace('_', '-')
 
-        self._str = '%s[%s_%s_s%s' % (models_concat, 'test', dataset, shots)
+        self._str = '%s[%s_%s_s%s_u%s]' % (models_concat, self.mode, dataset, shots, update_steps)
 
         self._repr = 'evaluated models : \n' \
-                   + ''.join(['    %s \n' % m for m in self.model_names]) \
-                   + 'validation sets: \n' \
+                   + 'validation set: \n' \
+                   + '   %s \n' % repr(self.test_dl) \
                    + 'scale factor: %s \n' % scale \
                    + 'number of shots: %s \n' % shots \
-                   + 'learning rate: %s \n' % lr \
-                   + 'loss function: %s \n' % loss
+                   + 'update steps: %s \n' % update_steps \
+                   + 'learning rate: %s \n' % lr

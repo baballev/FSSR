@@ -53,8 +53,8 @@ def augment(flag, size):
         p.crop_by_size(probability=1, width=size[1], height=size[0], centre=False)
         # p.resize(probability=1, width=size[1], height=size[0])
     else:
-        #p.crop_by_size(probability=1, width=size[1], height=size[0], centre=True)
-        p.resize(probability=1, width=size[1], height=size[0])
+        p.crop_by_size(probability=1, width=size[1], height=size[0], centre=True)
+        #p.resize(probability=1, width=size[1], height=size[0])
     return p.torch_transform()
 
 
