@@ -14,7 +14,7 @@ def create_edsr(file, **kwargs):
     file: string - must contain the config of the model in the following format 'EDSR-r#f#x#' where
     # are, respectively the number of res blocks, the number of feature maps and the scale.
     """
-    s = re.search(r'(EDSR-r([1-9]*)f([1-9]*)x([1-9]*).*)\.pth$', file)
+    s = re.search(r'(r([1-9]*)f([1-9]*)x([1-9]*).*)\.pth$', file)
     if s is None:
         raise ValueError('file name does not respect \'EDSR-r#f#x#\' syntax')
 

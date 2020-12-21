@@ -10,11 +10,11 @@ class Run:
         self.opt = options
         self.model = None
 
-        if options.no_wandb:
-            self.wandb = None
-        else:    
+        if options.debug:
+            self.wandb = False
+        else:
             self.wandb = options.wandb if options.wandb else mode
-
+        
         self.require(requires)
 
 

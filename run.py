@@ -13,11 +13,8 @@ def main(opt):
         run(debug=opt.debug)
 
     elif opt.mode == 'test':
-        #require('valid_folders', 'models', 'scale', 'nb_shots', 'update_test_steps', 'learning_rate')
-        run = Test(model_fps=opt.models, test_fp=opt.valid_folders[0], scale=opt.scale,
-            shots=opt.nb_shots, lr=opt.learning_rate, size=opt.resize, loss=opt.loss, 
-            update_steps=opt.update_test_steps, wandb=wandb)
-
+        run = Test(opt)
+        run(debug=opt.debug)
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -62,10 +59,8 @@ if __name__ == "__main__":
         help='For meta-learning: number of gradient updates when finetuning during training.')
     parser.add_argument('--update-test-steps', type=int,
         help='For meta-learning: number of gradient updates when finetuning during validation.')
-    parser.add_argument('--wandb', type=str, 
-        help='Name of the wandb project to save the run to.')
-    parser.add_argument('--no-wandb', action='store_true', default=False,
-        help='Flag to disable wandb recording completely.')
+    parser.add_argument('--wandb', type=str, default=False,
+        help='Name of the wandb project to save the run to. Default is set to no wandb recording.')
     parser.add_argument('--size', nargs='+', type=int,
         help='Image size input of the SR model as (h, w).')
     parser.add_argument('--models', nargs='+', type=str,
@@ -74,7 +69,6 @@ if __name__ == "__main__":
         help='Will prevent run from starting and print a summary of the options.')
 
     opt = parser.parse_args()
-    opt.wandb = False if opt.no_wandb else opt.wandb
-    assert len(opt.size) == 0 or len(opt.size) == 2
+    assert not opt.size or (opt.size and (len(opt.size) == 0 or len(opt.size) == 2))
 
     main(opt)
