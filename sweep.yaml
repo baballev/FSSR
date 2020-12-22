@@ -1,22 +1,44 @@
-program: sweep.py
+sweep: sweeper
 method: bayes
 metric:
-  goal: minimize
-  name: valid_loss_DIV2K_train
+    goal: minimize
+    name: valid_loss_DIV2K_train
 parameters:
-  dropout:
-    values: [0.15, 0.2, 0.25, 0.3, 0.4]
-  hidden_layer_size:
-    values: [96, 128, 148]
-  layer_1_size:
-    values: [10, 12, 14, 16, 18, 20]
-  layer_2_size:
-    values: [24, 28, 32, 36, 40, 44]
-  learn_rate:
-    values: [0.001, 0.01, 0.003]
-  decay:
-    values: [1e-5, 1e-6, 1e-7]
-  momentum:
-    values: [0.8, 0.9, 0.95]
-  epochs:
-    value: 100
+    nb_tasks:
+        values: [1, 2, 5, 10]
+    shots:
+        values: [1, 2, 5, 10]
+    meta_lr:
+        min: 1e-5
+        max: 5e-3
+    weight_decay:
+        values: [1e-5, 1e-6, 1e-7]
+    lr:
+        min: 1e-4
+        max: 5e-2
+    lr_annealing:
+        values: [0, 1, 1.5, 2]
+    update_steps:
+        values: [2, 5, 10, 20]
+    epochs:
+        value: 100
+    train_set:
+        value: DIV2K_train#AUGMENTOR
+    clusters:
+        value: DIV2K_all_clusters
+    size:
+        value: 256
+    wandb:
+        value: False
+    debug:
+        value: False
+    load:
+        value: False
+    scale:
+        value: 2
+    n_resblocks:
+        value: 16
+    n_feats:
+        value: 64
+    loss:
+        value: L1

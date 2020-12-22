@@ -9,8 +9,9 @@ class Run:
         self.mode = mode
         self.opt = options
         self.model = None
+        self.debug = options.debug
 
-        if options.debug:
+        if self.debug:
             self.wandb = False
         else:
             self.wandb = options.wandb if options.wandb else mode
@@ -18,8 +19,8 @@ class Run:
         self.require(requires)
 
 
-    def __call__(self, debug):
-        if debug:
+    def __call__(self):
+        if self.debug:
             return print(repr(self))
 
         if self.wandb:

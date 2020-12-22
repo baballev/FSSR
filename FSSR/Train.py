@@ -12,8 +12,8 @@ class Train(Run):
         super(Train, self).__init__(*args, **kwargs)
         self.scheduler = None
 
-    def __call__(self, debug):
-        super().__call__(debug)
+    def __call__(self):
+        super().__call__()
 
         best = clone_state(self.model), math.inf, -1
         train_losses, valid_losses = [], []
