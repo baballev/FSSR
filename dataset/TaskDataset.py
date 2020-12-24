@@ -11,9 +11,8 @@ class TaskDataset(DatasetWrapper):
     """Style-based task segmentation of the dataset."""
     style_params = {'b': 0.5, 'c': 0.5, 's': 0.5, 'h': 0.5}
 
-    def __init__(self, fp, scale, size, shots, augment=False, style=False):
+    def __init__(self, fp, scale, size, shots, augment=False, style=False, shuffle=False):
         self.fp = fp
-        self.paths = list_images(datasets[fp] if fp in datasets else fp)
         self.sizes = t.get_sizes(size, scale)
         self.style = style
         self.shots = shots
@@ -21,9 +20,14 @@ class TaskDataset(DatasetWrapper):
         self.augment = t.augment(augment, self.sizes[0])
         self.scale = t.resize(self.sizes[1])
 
+        if shuffle:
+            random.shuffle(self.paths)
+        task_size = shots + 1
+        paths = list_images(datasets[fp] if fp in datasets else fp)
+        self.tasks = [paths[i: i + task_size] for i in range(0, len(paths), task_size)]
+
     def __getitem__(self, index):
-        img_paths = random.sample(self.paths, self.shots + 1)
-        imgs = [fetch_image(path) for path in img_paths]
+        imgs = [fetch_image(fp) for fp in self.tasks[index]]
 
         p = t.Pipeline(self.augment)
         if self.style:
@@ -38,5 +42,5 @@ class TaskDataset(DatasetWrapper):
         return x_spt, y_spt, x_qry, y_qry
 
     def __len__(self):
-        return int(len(self.paths)//self.shots)
+        return len(self.tasks)
 
