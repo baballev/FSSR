@@ -3,6 +3,8 @@ from math import ceil
 import random
 from argparse import ArgumentParser
 from statistics import mean
+from math import floor
+from itertools import product
 
 from tqdm import tqdm
 import numpy as np
@@ -19,28 +21,38 @@ parser.add_argument('--path', type=str, default='../data/DIV2K/DIV2K_valid')
 parser.add_argument('--n-clusters', type=int, default=80)
 parser.add_argument('--min-size', type=int, default=10, help='Minimum cluster size.')
 parser.add_argument('--max-size', type=int, default=20, help='Maximum cluster size.')
+parser.add_argument('--patch-size', type=int, default=20, help='Patch size used for clustering.')
 
 opt = parser.parse_args()
 
-if opt.mode == 'embed':    
+# import wandb
+# wandb.init(project='delete')
+
+if opt.mode == 'embed': 
     assert os.path.isdir(opt.path)
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
+    
     model = torchvision.models.vgg16(pretrained=True)
     model.classifier = nn.Sequential(*[model.classifier[i] for i in range(4)])
     model.eval().to(device)
-
     fps = os.listdir(opt.path)
 
     embs = {}
+    d = opt.patch_size
     for fp in tqdm(fps):
         img = Image.open(os.sep.join((opt.path, fp))).convert('RGB')
-        x = T.ToTensor()(img).unsqueeze(0).to(device)
-    
-        emb = model(x).squeeze(0).detach().cpu().numpy()
-        embs[fp] = emb
+        x = T.ToTensor()(img).to(device)
+        h, w = x.shape[-2:]
+        
+        grid = list(product(range(0, h-h%d, d), range(0, w-w%d, d)))
+        x_grid = torch.stack([x[:, i:i+d, j:j+d] for i, j in grid], axis=0)
+        emb = model(x_grid).detach().cpu().reshape(h//d, w//d, -1)
+        
+        for i, j in grid:
+            patch_name = '%s_%i_%i' % (fp.split('.')[0], i, j)
+            embs[patch_name] = emb[i, j]
 
-    dest = '%s_emb' % opt.path
+    dest = '%s_%i_emb' % (opt.path, opt.patch_size)
     np.save(dest, embs)
     print('saved embeddings to %s.npy' % dest)
 
