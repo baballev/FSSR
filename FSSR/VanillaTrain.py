@@ -9,31 +9,30 @@ from dataset import BasicDataset, DataLoader
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class VanillaTrain(Train):
-    def __init__(self, train_fp, valid_fps, load=None, scale=2, bs=1, lr=0.0001, size=(256, 512),
-        loss='L1', n_resblocks=16, n_feats=64, wandb=False):
-        super(VanillaTrain, self).__init__(wandb)
+    def __init__(self, opt):
+        super(VanillaTrain, self).__init__(mode='vanilla', options=opt,
+            requires=['train_set', 'valid_sets', 'load', 'scale', 'batch_size', 'lr', 'size', 
+                'loss', 'n_resblocks', 'n_feats', 'epochs', 'wandb'])
 
-        self.model = EDSR(n_resblocks, n_feats, scale, res_scale=0.1).to(device)
-        if load:
-            load_state(self.model, load)
+        self.model = EDSR(opt.n_resblocks, opt.n_feats, opt.scale, res_scale=0.1).to(device)
+        if opt.load:
+            load_state(self.model, opt.load)
 
-        self.optim = optim.Adam(self.model.parameters(), lr=lr, amsgrad=True)
-        self.loss = Loss.get(loss, device)
+        self.optim = optim.SGD(self.model.parameters(), lr=opt.lr)
+        self.loss = Loss.get(opt.loss, device)
 
-        train_set = BasicDataset.preset(train_fp, scale=scale, size=size)
-        self.train_dl = DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=6, pin_memory=True)
+        train_set = BasicDataset.preset(opt.train_set, scale=opt.scale, size=opt.size)
+        self.train_dl = DataLoader(train_set, batch_size=opt.batch_size, shuffle=True, num_workers=6)
 
         self.valid_dls = []
-        for valid_fp in valid_fps:
-            valid_set = BasicDataset.preset(valid_fp, scale=scale, size=size)
-            valid_dl = DataLoader(valid_set, batch_size=bs, shuffle=True, num_workers=2, pin_memory=True)
+        for valid in opt.valid_sets:
+            valid_set = BasicDataset.preset(valid, scale=opt.scale, size=opt.size)
+            valid_dl = DataLoader(valid_set, batch_size=opt.batch_size, shuffle=True, num_workers=2)
             self.valid_dls.append(valid_dl)
 
-        self.summarize(load, scale, bs, lr, loss, n_resblocks, n_feats)
-
-
-    def __call__(self, epochs):
-        super().__call__(name='%s_e%i]' % (self, epochs), epochs=epochs)
+        self.epochs = opt.epochs
+        self.lr = opt.lr
+        self.summarize(**vars(opt))
 
 
     def train_batch(self, batch):
@@ -54,18 +53,21 @@ class VanillaTrain(Train):
         return loss.item()
 
 
-    def summarize(self, load, scale, bs, lr, loss, n_resblocks, n_feats):
-        prefix = '' if load is None else load.split('.pt')[0]
-        model = 'EDSR-r%if%ix%i' % (n_resblocks, n_feats, scale)
+    def summarize(self, load, scale, batch_size, lr, loss, n_resblocks, n_feats, epochs, **_):
+        prefix = load.split('.pt')[0] if type(load) is str else ''
+        model = 'r%if%ix%i' % (n_resblocks, n_feats, scale)
         dataset = str(self.train_dl).replace('_', '-')
 
-        self._str = '%s%s[%s_%s_bs%s' % (prefix, model, 'vanilla', dataset, bs)
+        self._str = '%s%s[%s_%s_bs%s_e%i]' % (prefix, model, self.mode, dataset, batch_size, epochs)
 
-        self._repr = 'train set: \n   %s \n' % repr(self.train_dl) \
+        self._repr = 'run name: %s \n' % self \
+                   + 'train set: \n   %s \n' % repr(self.train_dl) \
                    + 'valid sets: \n' \
                    +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
-                   + 'finetuning: %s \n' % ('from %s' % load if load else 'False') \
+                   + 'finetuning: %s \n' % (load if load else 'False') \
                    + 'scale factor: %s \n' % scale \
-                   + 'batch size: %s \n' % bs \
+                   + 'batch size: %s \n' % batch_size \
                    + 'learning rate: %s \n' % lr \
-                   + 'loss function: %s \n' % loss
+                   + 'loss function: %s \n' % loss \
+                   + 'epochs: %i' % epochs \
+                   + '(%i steps)' % (epochs*len(self.train_dl))

@@ -4,7 +4,7 @@ import torch.optim as optim
 from .Train import Train
 from utils import load_state
 from model import MAML, EDSR, Loss
-from dataset import ClusterDataset, DataLoader, get_clusters
+from dataset import ClusterDataset, DataLoader, get_clusters, TaskDataset
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -23,14 +23,16 @@ class MetaTrain(Train):
         self.optim = optim.SGD(self.model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
         self.loss = Loss.get(opt.loss, device)
 
-        train_clusters, valid_clusters = get_clusters(opt.clusters, split=0.1, shuffle=False)
+        # train_clusters, valid_clusters = get_clusters(opt.clusters, split=0.1, shuffle=False)
         
-        train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
-            size=opt.size, shots=opt.shots)
+        train_set = TaskDataset.preset('DIV2K_train#AUGMENTOR', scale=opt.scale, size=opt.size, shots=opt.shots)
+        # train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
+        #     size=opt.size, shots=opt.shots)
         self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=4)
 
-        valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
-            augment=False, size=opt.size, shots=opt.shots)
+        valid_set = TaskDataset.preset('DIV2K_valid', scale=opt.scale, size=opt.size, shots=opt.shots)
+        # valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
+        #     augment=False, size=opt.size, shots=opt.shots)
         self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2)]
 
         if opt.lr_annealing:
@@ -53,7 +55,7 @@ class MetaTrain(Train):
                 loss_spt = self.loss(y_spt_hat, y_spt[i])
                 cloned.adapt(loss_spt)
 
-                y_qry_hat = cloned(x_qry[i])
+            y_qry_hat = cloned(x_qry[i])
             loss_qry = self.loss(y_qry_hat, y_qry[i])
             loss_q += loss_qry
         loss_q /= self.opt.nb_tasks
@@ -74,8 +76,9 @@ class MetaTrain(Train):
             loss_spt = self.loss(y_spt_hat, y_spt[0])
             cloned.adapt(loss_spt)
 
-            y_qry_hat = cloned(x_qry[0])
-            loss_q = self.loss(y_qry_hat, y_qry[0])
+        # query only after all steps have been completed
+        y_qry_hat = cloned(x_qry[0]) 
+        loss_q = self.loss(y_qry_hat, y_qry[0])
         return loss_q.item()
 
 

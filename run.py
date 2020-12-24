@@ -1,20 +1,17 @@
 """CLI runner file."""
 def main(opt):
     from FSSR import VanillaTrain, MetaTrain, Test
-    
+
+    # query/support obviously are leaking
+    # wandb sweep metric is PSNR on test set (CelebA)    
     if opt.mode == 'vanilla':
-        #require('train_folder', 'valid_folders', 'scale', 'batch_size', 'epochs', 'learning_rate')
-        VanillaTrain(train_fp=opt.train_folder, valid_fps=opt.valid_folders, 
-            load=opt.load_weights, scale=opt.scale, bs=opt.batch_size, lr=opt.learning_rate, 
-            loss=opt.loss, size=opt.resize, epochs=opt.epochs, wandb=wandb)
+        VanillaTrain(opt)()
     
     elif opt.mode == 'meta':
-        run = MetaTrain(opt) 
-        run(debug=opt.debug)
+        MetaTrain(opt)()
 
     elif opt.mode == 'test':
-        run = Test(opt)
-        run(debug=opt.debug)
+        Test(opt)()
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -52,7 +49,7 @@ if __name__ == "__main__":
         help='Learning rate of the meta training (inner loop)')
     parser.add_argument('--lr-annealing', type=float, default=False,
         help='Max number of iterations until learning rate reaches zero. No decay if set to None.' \
-             'Defined as a fraction of the number of batch in a epoch i.e. len(train_dl).')
+             'Defined as a fraction of the number of batches in the data loader.')
     parser.add_argument('--weight-decay', type=float, default=0,
         help='Training L2 weight decay.')
     parser.add_argument('--update-steps', type=int,
