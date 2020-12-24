@@ -15,14 +15,15 @@ class Run:
             self.wandb = False
         else:
             self.wandb = options.wandb if options.wandb else mode
-        
+
         self.require(requires)
 
 
-    def __call__(self):
+    def __call__(self, name=None):
+        self.name = name
         if self.debug:
             return print(repr(self))
-
+    
         if self.wandb:
             wandb.init(project=self.wandb, name=str(self), notes=repr(self))
             if self.model is not None:
@@ -30,7 +31,8 @@ class Run:
 
     
     def terminate(self, model, loss, epoch):
-        save_state(model, '%s_%i.pth' % (self, epoch))
+        fp = '%s_%i_%.3f.pth' % (self.name if self.name else self, epoch, loss)
+        save_state(model, fp)
     
 
     def log(self, payload):
