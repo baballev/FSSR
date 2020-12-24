@@ -33,8 +33,8 @@ class Test(Run):
         self.summarize(**vars(opt))
 
 
-    def __call__(self, debug):
-        super().__call__(debug)
+    def __call__(self):
+        super().__call__()
 
         psnrs = {name: 0. for name in self.model_names}
         for j, data in enumerate(self.test_dl):
@@ -47,16 +47,21 @@ class Test(Run):
 
             for i, (model, name) in enumerate(zip(self.models, self.model_names)):
                 cloned = model.clone()
+                y_qry_hat = cloned(x_qry)
+                if j < 6:
+                    psnr = self.psnr(y_qry_hat[0], y_qry[0])
+                    self.log({'model(%i) img_%i' % (i, j): psnr.item()})
                 for k in range(self.opt.update_steps):
                     y_spt_hat = cloned(x_spt)
                     loss_spt = self.loss(y_spt_hat, y_spt)
                     cloned.adapt(loss_spt)
 
-                y_qry_hat = cloned(x_qry)
+                    y_qry_hat = cloned(x_qry)
+                    psnr = self.psnr(y_qry_hat[0], y_qry[0])
+                    if j < 6:
+                        self.log({'model(%i) img_%i' % (i, j): psnr.item()})
+                        
                 loss_q = self.loss(y_qry_hat, y_qry)
-                psnr = self.psnr(y_qry_hat[0], y_qry[0])
-               
-                self.log({name: loss_q.item()})
                 psnrs[name] += psnr.item()
                 if j < 6:
                     img = wandb.Image(y_qry_hat[0].cpu(),
