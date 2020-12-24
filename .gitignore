@@ -6,6 +6,7 @@
 /out
 /.idea
 local
+wandb
 
 __pycache__
 .*
