@@ -18,7 +18,8 @@ class VanillaTrain(Train):
         if opt.load:
             load_state(self.model, opt.load)
 
-        self.optim = optim.SGD(self.model.parameters(), lr=opt.lr)
+        self.optim = optim.Adam(self.model.parameters(), lr=opt.lr)#, amsgrad=True)
+        # optim should be halved at every 2x10^5 minibatch updates
         self.loss = Loss.get(opt.loss, device)
 
         train_set = BasicDataset.preset(opt.train_set, scale=opt.scale, size=opt.size)
@@ -30,7 +31,7 @@ class VanillaTrain(Train):
             valid_dl = DataLoader(valid_set, batch_size=opt.batch_size, shuffle=True, num_workers=2)
             self.valid_dls.append(valid_dl)
 
-        self.epochs = opt.epochs
+        self.epochs = opt.epochs if not opt.timesteps else opt.timesteps//len(self.train_dl)        
         self.lr = opt.lr
         self.summarize(**vars(opt))
 
