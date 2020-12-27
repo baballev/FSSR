@@ -2,8 +2,17 @@
 def main(opt):
     from FSSR import VanillaTrain, MetaTrain, Test
 
-    # query/support obviously are leaking
     # wandb sweep metric is PSNR on test set (CelebA)    
+    # meta_lr <-> lr...
+    # TaskDataset __init__ refactor
+    # superset the meta datasets since transform handling is the exact same on Task & Cluster
+
+    # Christmas discoveries: 
+    #  (1) use Adam like EDSR not SGD!!!
+    #  (2) randomness in mini-batches 'task-batches' leads to more instability vs fixing the elements 
+    #      on dataset init. Randomness also has the effect of mixing spt and qry (not a good idea).
+    #      Randomness was used in ClusterDataset because clusters had a size > nb_shots.
+    #      Tried with ClusterDataset160 min-cluster-size=5 and **fixed** query and got stability.
     if opt.mode == 'vanilla':
         VanillaTrain(opt)()
     
@@ -29,8 +38,10 @@ if __name__ == "__main__":
         help='The number of images for each training iteration as an integer.')
     parser.add_argument('--scale', type=int,
         help='The scaling factor for an upscaling task.')
-    parser.add_argument('--epochs', type=int,
+    parser.add_argument('--epochs', type=int, default=100,
         help='Number of epochs for training i.e number of times the training set is iterated over.')
+    parser.add_argument('--timesteps', type=int, default=False,
+        help='Number of updates to perform, will overwrite --epochs if set based on len(train_dl).')
     parser.add_argument('--shots', type=int,
         help='Number of shots in each task.')
     parser.add_argument('--loss', default='L1', choices=['VGG', 'L1', 'L2'],
@@ -43,6 +54,8 @@ if __name__ == "__main__":
         help='File containing clusters for a dataset.')
     parser.add_argument('--load', type=str, default=False,
         help='Path to the weight file for finetuning.')
+    parser.add_argument('--first-order', type=bool, default=True,
+        help='Whether to perform First Order MAML (will saves memory!)')
     parser.add_argument('--lr', type=float,
         help='Learning rate for training.')
     parser.add_argument('--meta-lr', type=float,

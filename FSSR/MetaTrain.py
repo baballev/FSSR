@@ -13,33 +13,33 @@ class MetaTrain(Train):
         super(MetaTrain, self).__init__(mode='meta', options=opt,
             requires=['train_set', 'clusters', 'load', 'scale', 'shots', 'nb_tasks', 'lr', 'meta_lr',
                 'size', 'loss', 'n_resblocks', 'n_feats', 'lr_annealing', 'weight_decay', 'epochs', 
-                'update_steps', 'update_test_steps', 'wandb'])
+                'update_steps', 'update_test_steps', 'first_order', 'timesteps', 'wandb'])
 
         model = EDSR(opt.n_resblocks, opt.n_feats, opt.scale, res_scale=0.1)
         if opt.load:
             load_state(model, opt.load)
 
-        self.model = MAML(model, lr=opt.meta_lr, first_order=True, allow_nograd=True).to(device)
-        self.optim = optim.SGD(self.model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
+        self.model = MAML(model, lr=opt.meta_lr, first_order=opt.first_order, allow_nograd=True).to(device)
+        self.optim = optim.Adam(self.model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
         self.loss = Loss.get(opt.loss, device)
 
-        # train_clusters, valid_clusters = get_clusters(opt.clusters, split=0.1, shuffle=False)
+        train_clusters, valid_clusters = get_clusters(opt.clusters, split=0.1, shuffle=False)
         
-        train_set = TaskDataset.preset('DIV2K_train#AUGMENTOR', scale=opt.scale, size=opt.size, shots=opt.shots)
-        # train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
-        #     size=opt.size, shots=opt.shots)
-        self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=4)
+        #train_set = TaskDataset.preset('DIV2K_train#AUGMENTOR#STYLE', scale=opt.scale, size=opt.size, shots=opt.shots)
+        train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
+            size=opt.size, shots=opt.shots)
+        self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=6)
 
-        valid_set = TaskDataset.preset('DIV2K_valid', scale=opt.scale, size=opt.size, shots=opt.shots)
-        # valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
-        #     augment=False, size=opt.size, shots=opt.shots)
+        #valid_set = TaskDataset.preset('DIV2K_valid', scale=opt.scale, size=opt.size, shots=opt.shots)
+        valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
+            augment=False, size=opt.size, shots=opt.shots)
         self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2)]
 
         if opt.lr_annealing:
             opt.lr_annealing = int(opt.lr_annealing*len(self.train_dl))
             self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, opt.lr_annealing)
 
-        self.epochs = opt.epochs
+        self.epochs = opt.epochs if not opt.timesteps else opt.timesteps//len(self.train_dl)
         self.lr = opt.lr
         self.summarize(**vars(opt))
 
@@ -82,8 +82,8 @@ class MetaTrain(Train):
         return loss_q.item()
 
 
-    def summarize(self, clusters, load, scale, shots, nb_tasks, lr, meta_lr, size, loss, epochs, 
-        n_resblocks, n_feats, lr_annealing, weight_decay, update_steps, update_test_steps, **_):
+    def summarize(self, clusters, load, scale, shots, nb_tasks, lr, meta_lr, size, loss, n_resblocks,
+        n_feats, lr_annealing, weight_decay, update_steps, update_test_steps, first_order, **_):
 
         prefix = load.split('.pt')[0] if type(load) is str else ''
         model = 'r%if%ix%i' % (n_resblocks, n_feats, scale)
@@ -94,11 +94,13 @@ class MetaTrain(Train):
             ('%.e' % meta_lr).replace('-0', ''), nb_tasks, shots, update_steps)
 
         self._repr = 'run name: %s \n' % self \
-                   + 'train set: \n   %s \n' % repr(self.train_dl) \
+                   + 'train set: \n   %r \n' % self.train_dl \
+                   + 'number of batches: %i \n' % len(self.train_dl) \
                    + 'valid sets: \n' \
-                   +  ''.join(['   %s \n' % repr(s) for s in self.valid_dls]) \
+                   +  ''.join(['   %r \n' % s for s in self.valid_dls]) \
                    + 'finetuning: %s \n' % (load if load else 'False') \
                    + 'scale factor: %i \n' % scale \
+                   + '1st order? (FOMAML): %r \n' % first_order \
                    + 'lr (outer loop): %s \n' % lr \
                    + 'lr decay: %s \n' % (('anneals every %i steps' % lr_annealing) if lr_annealing else 'No') \
                    + 'meta-lr (inner-loop): %s \n' % meta_lr \
@@ -108,5 +110,5 @@ class MetaTrain(Train):
                    + 'number of shots: %i \n' % shots \
                    + 'updates steps (train): %i \n' % update_steps \
                    + 'update steps (validation): %i \n' % update_test_steps \
-                   + 'epochs: %i ' % epochs \
-                   + '(%i steps)' % (epochs*len(self.train_dl))
+                   + 'epochs: %i ' % self.epochs \
+                   + '(%i steps)' % (self.epochs*len(self.train_dl))
