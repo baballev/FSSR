@@ -14,9 +14,7 @@ class ClusterDataset(DatasetWrapper):
     style_params = {'b': 0.3, 'c': 0.5, 's': 0.3, 'h': 0.4}
 
     def __init__(self, fp, clusters, scale, size, shots, augment=False, style=False):
-        assert min([len(c) for c in clusters]) >= shots + 1
-        
-        self.clusters = clusters
+        self.clusters = [c for c in clusters if len(c) >= shots + 1]
         self.fp = datasets[fp] if fp in datasets else fp
         self.shots = shots
         self.style = style
@@ -26,8 +24,8 @@ class ClusterDataset(DatasetWrapper):
         self.scale = t.resize(self.sizes[1])
 
     def __getitem__(self, index):
-        cluster = list(self.clusters[index])
-        samples = random.sample(cluster, self.shots + 1)
+        clusters = list(self.clusters[index])
+        samples = random.sample(clusters[:-1], self.shots) + clusters[-1:]
         imgs = [fetch_image(os.path.join(self.fp, path)) for path in samples]
 
         p = t.Pipeline(self.augment)
