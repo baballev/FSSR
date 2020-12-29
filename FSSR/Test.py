@@ -33,11 +33,12 @@ class Test(Run):
         self.summarize(**vars(opt))
 
 
-    def __call__(self):
+    def __call__(self, n_tracked=6):
         super().__call__()
 
+        steps = [{} for _ in range(self.opt.update_steps + 2)] # extra 2 for step=0 and step=img
         psnrs = {name: 0. for name in self.model_names}
-        for j, data in enumerate(self.test_dl):
+        for i, data in enumerate(self.test_dl):
             x, y = [d.to(device) for d in data]
             y_spt, y_qry = y[:-1], y[-1:]
             x_spt, x_qry = x[:-1], x[-1:]
@@ -45,12 +46,13 @@ class Test(Run):
             example = [wandb.Image(x_qry[0].cpu(), caption='LR'),
                        wandb.Image(y_qry[0].cpu(), caption='HR (L1 / PSNR)')]
 
-            for i, (model, name) in enumerate(zip(self.models, self.model_names)):
+            for j, (model, name) in enumerate(zip(self.models, self.model_names)):
                 cloned = model.clone()
                 y_qry_hat = cloned(x_qry)
-                if j < 6:
-                    psnr = self.psnr(y_qry_hat[0], y_qry[0])
-                    self.log({'model(%i) img_%i' % (i, j): psnr.item()})
+                psnr = self.psnr(y_qry_hat[0], y_qry[0])
+                if i < n_tracked:
+                    steps[0]['model(%i) img_%i' % (j, i)] = psnr.item()
+                
                 for k in range(self.opt.update_steps):
                     y_spt_hat = cloned(x_spt)
                     loss_spt = self.loss(y_spt_hat, y_spt)
@@ -58,21 +60,24 @@ class Test(Run):
 
                     y_qry_hat = cloned(x_qry)
                     psnr = self.psnr(y_qry_hat[0], y_qry[0])
-                    if j < 6:
-                        self.log({'model(%i) img_%i' % (i, j): psnr.item()})
-                        
+                    if i < n_tracked:
+                        steps[k]['model(%i) img_%i' % (j, i)] = psnr.item()
+
                 loss_q = self.loss(y_qry_hat, y_qry)
                 psnrs[name] += psnr.item()
-                if j < 6:
+                if i < n_tracked:
                     img = wandb.Image(y_qry_hat[0].cpu(),
-                        caption='y_model(%i) (%.4f / %.2f dB)' % (i, loss_q.item(), psnr.item()))
+                        caption='y_model(%i) (%.4f / %.2f dB)' % (j, loss_q.item(), psnr.item()))
                     example.append(img)
 
-            if j < 6:
-                self.log({'img_%i' % j: example})
+            if i < n_tracked:
+                steps[-1]['img_%i' % i] = example
         
         for i, (model, psnr) in enumerate(psnrs.items()):
             print('model(%i) avg PSNR = %.2f dB \n  %s' % (i, psnr/len(self.test_dl), model))
+            
+        for step in steps:
+            self.log(step)
 
 
     def summarize(self, shots, lr, loss, scale, update_steps, **_):
