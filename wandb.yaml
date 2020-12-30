@@ -2,17 +2,17 @@ sweep: sweeper
 method: bayes
 metric:
     goal: minimize
-    name: valid_loss_DIV2K_train
+    name: best
 parameters:
     nb_tasks:
-        values: [1, 2, 5, 10]
+        values: [1, 2, 5, 10, 16]
     shots:
-        values: [1, 2, 5, 10]
+        values: [1, 2]
     meta_lr:
         min: 1e-5
         max: 5e-3
     weight_decay:
-        values: [1e-5, 1e-6, 1e-7]
+        values: [1e-6, 1e-5, 1e-4]
     lr:
         min: 1e-4
         max: 5e-2
@@ -20,14 +20,16 @@ parameters:
         values: [0, 1, 1.5, 2]
     update_steps:
         values: [2, 5, 10, 20]
+    update_test_steps:
+        value: 10
     epochs:
-        value: 100
+        value: 0
     train_set:
-        value: DIV2K_train#AUGMENTOR
+        value: DIV2K_all#AUGMENTOR
     clusters:
-        value: DIV2K_all_clusters
+        value: DIV2K_160clusters
     size:
-        value: 256
+        value: 48
     wandb:
         value: False
     debug:
@@ -42,3 +44,7 @@ parameters:
         value: 64
     loss:
         value: L1
+    first_order:
+        value: True
+    timesteps:
+        value: 10000
