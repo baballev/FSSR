@@ -1,6 +1,7 @@
 import math
 from statistics import mean
 
+import wandb
 import torch
 from tqdm import tqdm
 
@@ -12,8 +13,8 @@ class Train(Run):
         super(Train, self).__init__(*args, **kwargs)
         self.scheduler = None
 
-    def __call__(self):
-        super().__call__()
+    def __call__(self, **kwargs):
+        super().__call__(**kwargs)
 
         best = clone_state(self.model), math.inf, -1
         train_losses, valid_losses = [], []
@@ -27,6 +28,8 @@ class Train(Run):
 
             eval_loss = mean(valid_loss)
             if eval_loss <= best[1]:
+                if self.wandb:
+                    wandb.run.summary['best'] = eval_loss
                 best = clone_state(self.model), eval_loss, epoch + 1
 
         self.log('train_loss(%s): %s' % (self.train_dl, [round(x, 4) for x in train_losses]))
