@@ -48,24 +48,15 @@ class MetaTrain(Train):
     def train_batch(self, batch):
         x_spt, y_spt, x_qry, y_qry = [v.to(device) for v in batch]
 
-        ex = []
         loss_q = 0
         for i in range(x_spt.shape[0]):
             cloned = self.model.clone()
-            for ii in range(x_spt.shape[1]):
-                ex.append(wandb.Image(x_spt[i][ii]))
-                ex.append(wandb.Image(y_spt[i][ii]))
-
             for k in range(self.opt.update_steps):
                 y_spt_hat = cloned(x_spt[i])
                 loss_spt = self.loss(y_spt_hat, y_spt[i])
                 cloned.adapt(loss_spt)
 
             y_qry_hat = cloned(x_qry[i])
-            ex.append(wandb.Image(y_qry[i][0]))
-            ex.append(wandb.Image(y_qry_hat[i][0]))
-            self.log({'image': ex})
-            
             loss_qry = self.loss(y_qry_hat, y_qry[i])
             loss_q += loss_qry
         loss_q /= self.opt.nb_tasks
