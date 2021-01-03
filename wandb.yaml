@@ -5,21 +5,21 @@ metric:
     name: best
 parameters:
     nb_tasks:
-        values: [1, 2, 5, 10, 16]
+        values: [10, 16, 20]
     shots:
         values: [1, 2]
     meta_lr:
         min: 1e-5
         max: 5e-3
     weight_decay:
-        values: [1e-6, 1e-5, 1e-4]
+        values: [0, 1e-6, 1e-5, 1e-4]
     lr:
         min: 1e-4
         max: 5e-3
     lr_annealing:
         values: [0, 1, 1.5, 2]
     update_steps:
-        values: [2, 5, 10, 20]
+        values: [2, 5, 10]
     update_test_steps:
         value: 10
     epochs:
@@ -29,7 +29,7 @@ parameters:
     clusters:
         value: DIV2K_160clusters
     size:
-        value: 48
+        value: 96
     wandb:
         value: False
     debug:
@@ -47,4 +47,4 @@ parameters:
     first_order:
         value: True
     timesteps:
-        value: 10000
+        value: 5000
