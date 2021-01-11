@@ -5,9 +5,9 @@ metric:
     name: best
 parameters:
     nb_tasks:
-        values: [10, 16, 20]
+        values: [5, 10, 16, 20]
     shots:
-        values: [1, 2]
+        values: [2, 5, 10]
     meta_lr:
         min: 1e-5
         max: 5e-3
@@ -27,7 +27,7 @@ parameters:
     train_set:
         value: DIV2K_all#AUGMENTOR
     clusters:
-        value: DIV2K_160clusters
+        value: DIV2K_60clusters
     size:
         value: 96
     wandb:
