@@ -8,17 +8,14 @@ from itertools import product
 
 from tqdm import tqdm
 import numpy as np
-import torch
-import torch.nn as nn
-import torchvision
-import torchvision.transforms as T
 from PIL import Image
 
 parser = ArgumentParser()
 
-parser.add_argument('mode', choices=['tile', 'embed', 'cluster'])
+parser.add_argument('mode', choices=['tile', 'embed', 'pca', 'cluster'])
 parser.add_argument('--path', type=str, default='../data/DIV2K/DIV2K_valid')
 parser.add_argument('--out', type=str)
+parser.add_argument('--sample', type=float, default=0.1, help='Propotion of data points used.') 
 parser.add_argument('--n-clusters', type=int, default=80)
 parser.add_argument('--min-size', type=int, default=10, help='Minimum cluster size.')
 parser.add_argument('--max-size', type=int, default=20, help='Maximum cluster size.')
@@ -26,58 +23,71 @@ parser.add_argument('--tile-size', type=int, default=192, help='Size of patches 
 
 opt = parser.parse_args()
 
-# import wandb
-# wandb.init(project='delete')
 
 if opt.mode == 'tile':
     assert opt.path and opt.out
 
-    fps = os.listdir(opt.path)
-
+    filenames = os.listdir(opt.path)
     d = opt.tile_size
-    for fp in fps[1:]:
-        name, ext = os.path.splitext(fp)
-        img = Image.open(os.path.join(opt.path, fp))#.convert('RGB')
+    total = 0
+    for f in tqdm(filenames):
+        name, ext = os.path.splitext(f)
+        img = Image.open(os.path.join(opt.path, f))
         w, h = img.size
 
         grid = list(product(range(0, h-h%d, d), range(0, w-w%d, d)))
-        names = [os.path.join(opt.out, '%s_%i_%i' % (fp, i, j)) for i, j in grid]
-
         for i, j in grid:
             box = (j, i, j+d, i+d)
             out = os.path.join(opt.out, f'{name}_{i}_{j}{ext}')
             img.crop(box).save(out)
-        break
-    print('end')
+        total += len(grid)
+    print(f'created {total} image patches from {len(filenames)} images')
 
 
-elif opt.mode == 'embed': 
+elif opt.mode == 'embed': # use @torch.no_grad()
+    import torch
+    import torch.nn as nn
+    import torchvision
+    import torchvision.transforms as T
+
     assert os.path.isdir(opt.path)
+
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    
     model = torchvision.models.vgg16(pretrained=True)
     model.classifier = nn.Sequential(*[model.classifier[i] for i in range(4)])
     model.eval().to(device)
-    fps = os.listdir(opt.path)
-
+    
+    filenames = os.listdir(opt.path)
+    samples = random.sample(filenames, int(len(filenames)*opt.sample))
     embs = {}
-    d = opt.patch_size
-    for fp in tqdm(fps):
-        img = Image.open(os.sep.join((opt.path, fp))).convert('RGB')
-        x = T.ToTensor()(img).to(device)
-        h, w = x.shape[-2:]
-        
-        grid = list(product(range(0, h-h%d, d), range(0, w-w%d, d)))
-        x_grid = torch.stack([x[:, i:i+d, j:j+d] for i, j in grid], axis=0)
-        emb = model(x_grid).detach().cpu().reshape(h//d, w//d, -1)
-        
-        for i, j in grid:
-            patch_name = '%s_%i_%i' % (fp.split('.')[0], i, j)
-            embs[patch_name] = emb[i, j]
 
-    dest = '%s_%i_emb' % (opt.path, opt.patch_size)
+    import pdb; pdb.set_trace()
+
+    with torch.no_grad():
+        for f in tqdm(filenames):
+            name, _ = os.path.splitext(f)
+            img = Image.open(os.path.join(opt.path, f))
+            x = T.ToTensor()(img).unsqueeze(0).to(device)
+        
+            embs[f] = model(x).detach().cpu().numpy()
+
+    #dest = '%s_%i_emb' % (opt.path, opt.patch_size)
+    dest = './emb'
     np.save(dest, embs)
-    print('saved embeddings to %s.npy' % dest)
+    print(f'embedded {len(samples)} of the {len(filenames)} found into {dest}.npy')
+
+
+elif opt.mode == 'pca':
+    from sklearn.decomposition import PCA    
+    assert os.path.isfile(opt.path)
+
+    embs = np.load(opt.path, allow_pickle=True).item()
+    img_names = embs.keys()
+
+    fit = random.sample(img_names, len(img_names)*opt.fit)
+    X = np.stack([embs[name] for name in fit])
+
+    import pdb; pdb.set_trace()
 
 
 elif opt.mode == 'cluster':
