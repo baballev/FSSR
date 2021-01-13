@@ -16,19 +16,42 @@ from PIL import Image
 
 parser = ArgumentParser()
 
-parser.add_argument('mode', choices=['embed', 'cluster'])
+parser.add_argument('mode', choices=['tile', 'embed', 'cluster'])
 parser.add_argument('--path', type=str, default='../data/DIV2K/DIV2K_valid')
+parser.add_argument('--out', type=str)
 parser.add_argument('--n-clusters', type=int, default=80)
 parser.add_argument('--min-size', type=int, default=10, help='Minimum cluster size.')
 parser.add_argument('--max-size', type=int, default=20, help='Maximum cluster size.')
-parser.add_argument('--patch-size', type=int, default=20, help='Patch size used for clustering.')
+parser.add_argument('--tile-size', type=int, default=192, help='Size of patches used to tile the images.')
 
 opt = parser.parse_args()
 
 # import wandb
 # wandb.init(project='delete')
 
-if opt.mode == 'embed': 
+if opt.mode == 'tile':
+    assert opt.path and opt.out
+
+    fps = os.listdir(opt.path)
+
+    d = opt.tile_size
+    for fp in fps[1:]:
+        name, ext = os.path.splitext(fp)
+        img = Image.open(os.path.join(opt.path, fp))#.convert('RGB')
+        w, h = img.size
+
+        grid = list(product(range(0, h-h%d, d), range(0, w-w%d, d)))
+        names = [os.path.join(opt.out, '%s_%i_%i' % (fp, i, j)) for i, j in grid]
+
+        for i, j in grid:
+            box = (j, i, j+d, i+d)
+            out = os.path.join(opt.out, f'{name}_{i}_{j}{ext}')
+            img.crop(box).save(out)
+        break
+    print('end')
+
+
+elif opt.mode == 'embed': 
     assert os.path.isdir(opt.path)
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     
