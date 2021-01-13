@@ -13,6 +13,10 @@ def main(opt):
     #      on dataset init. Randomness also has the effect of mixing spt and qry (not a good idea).
     #      Randomness was used in ClusterDataset because clusters had a size > nb_shots.
     #      Tried with ClusterDataset160 min-cluster-size=5 and **fixed** query and got stability.
+    # Post:
+    # Sweep with 48x48. Runs can be very unstable in random parts of the training (related w/ the
+    # fact that support is picked at random in the set). To the point that gradients explode. This
+    # is usually seen when lr is rather high, nb_tasks is low (<5) and here (shots=2).
     if opt.mode == 'vanilla':
         VanillaTrain(opt)()
     
@@ -61,8 +65,7 @@ if __name__ == "__main__":
     parser.add_argument('--meta-lr', type=float,
         help='Learning rate of the meta training (inner loop)')
     parser.add_argument('--lr-annealing', type=float, default=False,
-        help='Max number of iterations until learning rate reaches zero. No decay if set to None.' \
-             'Defined as a fraction of the number of batches in the data loader.')
+        help='Number of epochs until learning rate reaches zero. No decay if set to None.')
     parser.add_argument('--weight-decay', type=float, default=0,
         help='Training L2 weight decay.')
     parser.add_argument('--update-steps', type=int,
