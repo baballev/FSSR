@@ -38,7 +38,7 @@ class Test(Run):
 
         steps = [{} for _ in range(self.opt.update_steps + 2)] # extra 2 for step=0 and step=img
         psnrs = {name: 0. for name in self.model_names}
-        for i, data in enumerate(self.test_dl):
+        for i, data in enumerate(tqdm(self.test_dl)):
             x, y = [d.to(device) for d in data]
             y_spt, y_qry = y[:-1], y[-1:]
             x_spt, x_qry = x[:-1], x[-1:]
