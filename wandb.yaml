@@ -5,29 +5,29 @@ metric:
     name: best
 parameters:
     nb_tasks:
-        values: [5, 10, 16, 20]
+        values: [10, 16, 20]
     shots:
-        values: [2, 5, 10]
+        values: [2, 5, 10, 15]
     meta_lr:
         min: 1e-5
         max: 5e-3
     weight_decay:
         values: [0, 1e-6, 1e-5, 1e-4]
     lr:
-        min: 1e-4
+        min: 1e-5
         max: 5e-3
     lr_annealing:
-        values: [0, 1, 1.5, 2]
+        values: [0, 5, 10, 15, 20]
     update_steps:
-        values: [2, 5, 10]
+        values: [5, 10, 15, 20]
     update_test_steps:
         value: 10
     epochs:
         value: 0
     train_set:
-        value: DIV2K_all#AUGMENTOR
+        value: DIV2K_256tiles#AUGMENTOR
     clusters:
-        value: DIV2K_60clusters
+        value: DIV2K_400clusters
     size:
         value: 96
     wandb:
