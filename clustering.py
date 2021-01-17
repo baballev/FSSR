@@ -16,7 +16,7 @@ parser.add_argument('mode', choices=['tile', 'embed', 'pca-fit', 'pca-transform'
 parser.add_argument('--path', type=str, default='../data/DIV2K/DIV2K_valid')
 parser.add_argument('--pca', type=str, help='File containing the pickled PCA.')
 parser.add_argument('--out', type=str)
-parser.add_argument('--sample', type=float, default=0.1, help='Propotion of data points used.')
+parser.add_argument('--sample', type=float, default=0.1, help='Proportion sampled from total population.')
 parser.add_argument('--n-components', type=int, default=100, help='Number of components in the PCA.')
 parser.add_argument('--n-clusters', type=int, default=80)
 parser.add_argument('--min-size', type=int, default=10, help='Minimum cluster size.')
@@ -26,7 +26,7 @@ parser.add_argument('--tile-size', type=int, default=192, help='Size of patches 
 opt = parser.parse_args()
 
 
-if opt.mode == 'tile':
+if opt.mode == 'tile': # os.mkdir f'{name}_512tiles
     assert opt.path and opt.out
 
     filenames = os.listdir(opt.path)
@@ -86,7 +86,7 @@ elif opt.mode == 'pca-fit':
     name, _ = os.path.splitext(opt.path)
 
     embs = np.load(opt.path, allow_pickle=True).item()
-    X = np.concatenate([emb for emb in embs.values()])
+    X = np.concatenate([emb for emb in embs.values()]) # np.concatenate(embs.values())
 
     pca = PCA(n_components=opt.n_components)
     pca.fit(X)
@@ -104,6 +104,7 @@ elif opt.mode == 'pca-transform':
     import torch.nn as nn
     import torchvision
     import torchvision.transforms as T
+
     assert os.path.isdir(opt.path) and os.path.isfile(opt.pca)
 
     name, _ = os.path.splitext(opt.path)
@@ -132,29 +133,26 @@ elif opt.mode == 'pca-transform':
 
 elif opt.mode == 'cluster':
     from k_means_constrained import KMeansConstrained
+
     assert os.path.isfile(opt.path)
-    
+
+    name, _ = os.path.splitext(opt.path)
+
     embs = np.load(opt.path, allow_pickle=True).item()
-    keys = embs.keys() # extract once, items()
 
     kmeans = KMeansConstrained(n_clusters=opt.n_clusters, size_min=opt.min_size, size_max=opt.max_size)
-   
-    print('fitting with %i images on %i clusters (w/ %i < size < %i)' % (len(keys), opt.n_clusters, opt.min_size, opt.max_size))
-    samples = random.sample(keys, k=len(keys))
-    x = np.stack([embs[s] for s in samples])
-    kmeans.fit(x)
+    samples = random.sample(list(embs.values()), k=int(len(embs)*opt.sample))
+    kmeans.fit(np.concatenate(samples))
+    print(f'fitted with {len(samples)} images on {opt.n_clusters} clusters ({opt.min_size} < size < {opt.max_size})')
 
-    y = np.stack(list(embs.values()))
-    clusters = kmeans.predict(y)
-    
-    groups = []
-    for i in range(opt.n_clusters):
-        neighbors = np.array(list(keys))[clusters == i]
-        # print('cluster_%i' % i, np.sort(neighbors))
-        groups.append(neighbors)
+    fullset = np.concatenate(list(embs.values()))
+    import pdb; pdb.set_trace()
+    clusters = kmeans.predict(fullset)
 
-    print([len(g) for g in groups])
-     
-    dest = opt.path.replace('_emb.npy', '_cluster')
-    np.save(dest, np.asarray(groups, dtype=object))
-    print('saved clusters to %s.npy' % dest)
+    labels = embs.keys()
+    groups = [[] for _ in range(opt.n_clusters)]
+    for label, cluster in zip(labels, clusters):
+        groups[cluster].append(label)
+
+    np.save(f'{name}_{opt.n_clusters}clusters', np.asarray(groups, dtype=object))
+    print(f'custered {len(labels)} points on {opt.n_clusters} clusters')
