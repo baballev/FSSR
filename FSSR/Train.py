@@ -32,9 +32,9 @@ class Train(Run):
                     wandb.run.summary['best'] = eval_loss
                 best = clone_state(self.model), eval_loss, epoch + 1
 
-        self.log('train_loss(%s): %s' % (self.train_dl, [round(x, 4) for x in train_losses]))
-        for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
-            self.log('valid_loss(%s): %s' % (valid_dl, [round(x, 4) for x in losses]))
+        # self.log('train_loss(%s): %s' % (self.train_dl, [round(x, 4) for x in train_losses]))
+        # for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
+        #     self.log('valid_loss(%s): %s' % (valid_dl, [round(x, 4) for x in losses]))
 
         super().terminate(*best)
 
@@ -45,7 +45,7 @@ class Train(Run):
             loss = self.train_batch(data)
             losses.append(loss)
             self.step_lr()
-            self.log({'train_loss_%s' % self.train_dl: loss, 'lr': self.get_lr()})
+            # self.log({'train_loss_%s' % self.train_dl: loss, 'lr': self.get_lr()})
             t.set_description('Train loss: %.4f (~%.4f)' % (loss, mean(losses)))
         return mean(losses)
 

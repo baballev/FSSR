@@ -26,19 +26,17 @@ class MetaTrain(Train):
 
         train_clusters, valid_clusters = get_clusters(opt.clusters, split=0.1, shuffle=False)
         
-        #train_set = TaskDataset.preset('DIV2K_train#AUGMENTOR#STYLE', scale=opt.scale, size=opt.size, shots=opt.shots)
         train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
             size=opt.size, shots=opt.shots)
         self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=6)
 
-        #valid_set = TaskDataset.preset('DIV2K_valid', scale=opt.scale, size=opt.size, shots=opt.shots)
         valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
             augment=False, size=opt.size, shots=opt.shots)
         self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2)]
 
         if opt.lr_annealing:
-            opt.lr_annealing = int(opt.lr_annealing*len(self.train_dl))
-            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, opt.lr_annealing)
+            lr_annealing = int(opt.lr_annealing*len(self.train_dl))
+            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, lr_annealing)
 
         self.epochs = opt.epochs if not opt.timesteps else opt.timesteps//len(self.train_dl)
         self.lr = opt.lr
@@ -94,6 +92,8 @@ class MetaTrain(Train):
             ('%.e' % lr).replace('-0', ''), ('d' if lr_annealing else ''), 
             ('%.e' % meta_lr).replace('-0', ''), nb_tasks, shots, update_steps)
 
+        nb_calls = len(self.train_dl)*nb_tasks*(shots+1)*update_steps
+        nb_accesses = len(self.train_dl)*nb_tasks*(shots+1)
         self._repr = 'run name: %s \n' % self \
                    + 'train set: \n   %r \n' % self.train_dl \
                    + 'number of batches: %i \n' % len(self.train_dl) \
@@ -112,4 +112,6 @@ class MetaTrain(Train):
                    + 'updates steps (train): %i \n' % update_steps \
                    + 'update steps (validation): %i \n' % update_test_steps \
                    + 'epochs: %i ' % self.epochs \
-                   + '(%i steps)' % (self.epochs*len(self.train_dl))
+                   + '(%i steps) \n' % (self.epochs*len(self.train_dl)) \
+                   + 'cost: %i forward passes/epoch\n' % nb_calls \
+                   + '      %i accesses/epoch\n' % nb_accesses

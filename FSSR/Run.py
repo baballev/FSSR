@@ -38,7 +38,7 @@ class Run:
     def log(self, payload):
         if (type(payload) is dict and self.wandb):
             wandb.log(payload)
-        else:
+        elif type(payload) is str:
             print(payload)
 
 
