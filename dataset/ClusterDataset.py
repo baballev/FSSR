@@ -13,19 +13,25 @@ class ClusterDataset(DatasetWrapper):
     """Style-based task segmentation of the dataset."""
     style_params = {'b': 0.3, 'c': 0.5, 's': 0.3, 'h': 0.4}
 
-    def __init__(self, fp, clusters, scale, size, shots, augment=False, style=False):
+    def __init__(self, fp, clusters, scale, size, shots, augment=False, style=False, random=True):
         self.clusters = [c for c in clusters if len(c) >= shots + 1]
         self.fp = datasets[fp] if fp in datasets else fp
         self.shots = shots
         self.style = style
+        self.random = random
         self.augment_name = augment
         self.sizes = t.get_sizes(size, scale)    
         self.augment = t.augment(augment, self.sizes[0])
         self.scale = t.resize(self.sizes[1])
 
     def __getitem__(self, index):
-        clusters = list(self.clusters[index])
-        samples = random.sample(clusters[:-1], self.shots) + clusters[-1:]
+        cluster = list(self.clusters[index])
+        if self.random:
+            support = random.sample(cluster[:-1], self.shots)
+        else:
+            support = cluster[:self.shots]
+        
+        samples = support + cluster[-1:]
         imgs = [fetch_image(os.path.join(self.fp, path)) for path in samples]
 
         p = t.Pipeline(self.augment)

@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.optim as optim
 
@@ -27,16 +29,16 @@ class MetaTrain(Train):
         train_clusters, valid_clusters = get_clusters(opt.clusters, split=0.1, shuffle=False)
         
         train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
-            size=opt.size, shots=opt.shots)
+            size=opt.size, shots=opt.shots, random=True)
         self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=6)
 
         valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
-            augment=False, size=opt.size, shots=opt.shots)
+            augment=False, size=opt.size, shots=opt.shots, random=False)
         self.valid_dls = [DataLoader(valid_set, batch_size=1, shuffle=False, num_workers=2)]
 
         if opt.lr_annealing:
-            lr_annealing = int(opt.lr_annealing*len(self.train_dl))
-            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, lr_annealing)
+            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optim, 
+                T_max=opt.lr_annealing, eta_min=1e-5)
 
         self.epochs = opt.epochs if not opt.timesteps else opt.timesteps//len(self.train_dl)
         self.lr = opt.lr
@@ -56,6 +58,10 @@ class MetaTrain(Train):
 
             y_qry_hat = cloned(x_qry[i])
             loss_qry = self.loss(y_qry_hat, y_qry[i])
+            
+            if loss_qry > 1 or math.isnan(loss_qry):
+                import pdb; pdb.set_trace()
+
             loss_q += loss_qry
         loss_q /= self.opt.nb_tasks
        
