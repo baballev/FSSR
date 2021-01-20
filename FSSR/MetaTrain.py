@@ -2,7 +2,7 @@ import math
 
 import torch
 import torch.optim as optim
-
+ 
 import wandb
 from .Train import Train
 from utils import load_state
@@ -42,26 +42,36 @@ class MetaTrain(Train):
 
         self.epochs = opt.epochs if not opt.timesteps else opt.timesteps//len(self.train_dl)
         self.lr = opt.lr
+        self.update_steps = opt.update_steps
+        self.update_test_steps = opt.update_test_steps
         self.summarize(**vars(opt))
 
 
     def train_batch(self, batch):
         x_spt, y_spt, x_qry, y_qry = [v.to(device) for v in batch]
 
-        loss_q = 0
+        loss_q = 0.
         for i in range(x_spt.shape[0]):
             cloned = self.model.clone()
-            for k in range(self.opt.update_steps):
+            loss_qry = 0.
+            for k in range(self.update_steps):
                 y_spt_hat = cloned(x_spt[i])
                 loss_spt = self.loss(y_spt_hat, y_spt[i])
                 cloned.adapt(loss_spt)
 
-            y_qry_hat = cloned(x_qry[i])
-            loss_qry = self.loss(y_qry_hat, y_qry[i])
-            
-            if loss_qry > 1 or math.isnan(loss_qry):
-                import pdb; pdb.set_trace()
+                y_qry_hat = cloned(x_qry[i])
+                step_loss_qry = self.loss(y_qry_hat, y_qry[i])
+                loss_qry += step_loss_qry
+                
+                if step_loss_qry > 1 or math.isnan(step_loss_qry):
+                    import pdb; pdb.set_trace()
 
+            if self.update_steps:
+                loss_qry /= self.update_steps
+            else:
+                y_qry_hat = cloned(x_qry[i])
+                loss_qry = self.loss(y_qry_hat, y_qry[i])
+            
             loss_q += loss_qry
         loss_q /= self.opt.nb_tasks
        
@@ -76,7 +86,7 @@ class MetaTrain(Train):
         assert x_spt.shape[0] == 1, 'Can only be one task per batch on validation'
 
         cloned = model.clone()
-        for k in range(self.opt.update_test_steps):
+        for k in range(self.update_test_steps):
             y_spt_hat = cloned(x_spt[0])
             loss_spt = self.loss(y_spt_hat, y_spt[0])
             cloned.adapt(loss_spt)
