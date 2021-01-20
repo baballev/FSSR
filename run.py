@@ -58,8 +58,9 @@ if __name__ == "__main__":
         help='File containing clusters for a dataset.')
     parser.add_argument('--load', type=str, default=False,
         help='Path to the weight file for finetuning.')
-    parser.add_argument('--first-order', type=bool, default=True,
-        help='Whether to perform First Order MAML (will saves memory!)')
+    parser.add_argument('--first-order', default=True, action='store_true',
+        help='Compute first order approximation of MAML.')
+    parser.add_argument('--no-first-order', dest='first_order', action='store_false')
     parser.add_argument('--lr', type=float,
         help='Learning rate for training.')
     parser.add_argument('--meta-lr', type=float,
