@@ -15,7 +15,7 @@ def get_sizes(size, scale):
     resized_height, resized_width = size
     resized_height -= resized_height % scale
     resized_width -= resized_width % scale
-    return (resized_height, resized_width), (resized_height // scale, resized_width // scale)
+    return (resized_height // scale, resized_width // scale), (resized_height, resized_width)
 
 
 class ColorJitter(T.ColorJitter):
