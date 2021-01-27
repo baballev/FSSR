@@ -13,13 +13,13 @@ class ClusterDataset(DatasetWrapper):
     """Generic cluster based task segmentation of dataset."""
     style_params = {'b': 0.3, 'c': 0.5, 's': 0.3, 'h': 0.4}
 
-    def __init__(self, fp, clusters, scale, size, spt_size, qry_size, augment=False, style=False, 
+    def __init__(self, fp, clusters, scale, size, shots, augment=False, style=False, 
         random=True, loader=default_loader, strict=False):
         
         self.fp = datasets[fp] if fp in datasets else fp
         self.loader = lambda x: loader(os.path.join(self.fp, x))
 
-        self.spt_size, self.qry_size = spt_size, qry_size 
+        self.spt_size, self.qry_size = shots, 1
         self.clusters = self.split_clusters(clusters, strict)
         
         self.style = style
@@ -31,9 +31,9 @@ class ClusterDataset(DatasetWrapper):
 
 
     def split_clusters(self, clusters, strict):
-        clusters_ = [x for x in clusters if len(x) >= self.shots + 1]
+        clusters_ = [x for x in clusters if len(x) >= self.spt_size + self.qry_size]
         assert not strict or len(clusters) == len(clusters_)
-        
+
         meta_splits = []
         for c in clusters_:
             test_size = self.qry_size * len(c) // (self.spt_size + self.qry_size)
@@ -48,8 +48,8 @@ class ClusterDataset(DatasetWrapper):
             support = random.sample(train, self.spt_size)
             query = random.sample(test, self.qry_size)
         else:
-            support, query = cluster[:self.spt_size], cluster[-self.qry_size:]
-        
+            support, query = train[:self.spt_size], test[-self.qry_size:]
+
         imgs = [self.loader(fp) for fp in support + query]
 
         p = t.Pipeline(self.augment)

@@ -8,14 +8,11 @@ def get_sizes(size, scale):
     """
     Parameters
     ---
-        size: size of the image height*width
-        # limit: limits the total number of pixels in the input image
+        size: size of the input image (height, width)
         scale: scale factor applied to HR image
     """
-    resized_height, resized_width = size
-    resized_height -= resized_height % scale
-    resized_width -= resized_width % scale
-    return (resized_height // scale, resized_width // scale), (resized_height, resized_width)
+    h, w = size
+    return (h, w), (h*scale, w*scale)
 
 
 class ColorJitter(T.ColorJitter):

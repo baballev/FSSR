@@ -45,7 +45,7 @@ class Train(Run):
             loss = self.train_batch(data)
             losses.append(loss)
             self.step_lr()
-            # self.log({'train_loss_%s' % self.train_dl: loss, 'lr': self.get_lr()})
+            self.log({'train_loss_%s' % self.train_dl: loss, 'lr': self.get_lr()})
             t.set_description('Train loss: %.4f (~%.4f)' % (loss, mean(losses)))
         return mean(losses)
 

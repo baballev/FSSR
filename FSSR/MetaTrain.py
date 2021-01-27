@@ -30,7 +30,7 @@ class MetaTrain(Train):
         
         train_set = ClusterDataset.preset(opt.train_set, clusters=train_clusters, scale=opt.scale, 
             size=opt.size, shots=opt.shots, random=True)
-        self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=6)
+        self.train_dl = DataLoader(train_set, batch_size=opt.nb_tasks, shuffle=True, num_workers=4)
 
         valid_set = ClusterDataset.preset(opt.train_set, clusters=valid_clusters, scale=opt.scale, 
             augment=False, size=opt.size, shots=opt.shots, random=False)
