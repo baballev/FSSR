@@ -77,7 +77,6 @@ class MetaTrain(Train):
                 loss_qry = self.forward(model, x_qry, y_qry)
             
             loss_q += loss_qry
-        import pdb; pdb.set_trace()
         loss_q /= self.opt.nb_tasks
        
         self.optim.zero_grad()

@@ -35,9 +35,9 @@ class Run:
         save_state(model, fp)
     
 
-    def log(self, payload):
+    def log(self, payload, **kwargs):
         if (type(payload) is dict and self.wandb):
-            wandb.log(payload)
+            wandb.log(payload, **kwargs)
         elif type(payload) is str:
             print(payload)
 

@@ -13,6 +13,7 @@ class Train(Run):
         super(Train, self).__init__(*args, **kwargs)
         self.scheduler = None
 
+
     def __call__(self, **kwargs):
         super().__call__(**kwargs)
 
@@ -23,7 +24,7 @@ class Train(Run):
             train_loss = self.train()
             train_losses.append(train_loss)
 
-            valid_loss = self.validate()
+            valid_loss = self.validate(step=len(self.train_dl)*(epoch+1))
             valid_losses.append(valid_loss)
 
             eval_loss = mean(valid_loss)
@@ -32,9 +33,6 @@ class Train(Run):
                     wandb.run.summary['best'] = eval_loss
                 best = clone_state(self.model), eval_loss, epoch + 1
 
-        # self.log('train_loss(%s): %s' % (self.train_dl, [round(x, 4) for x in train_losses]))
-        # for valid_dl, losses in zip(self.valid_dls, zip(*valid_losses)):
-        #     self.log('valid_loss(%s): %s' % (valid_dl, [round(x, 4) for x in losses]))
 
         super().terminate(*best)
 
@@ -50,7 +48,7 @@ class Train(Run):
         return mean(losses)
 
 
-    def validate(self):
+    def validate(self, step):
         model = clone(self.model)
         valid_loss = []
         for valid_dl in self.valid_dls:
@@ -59,9 +57,9 @@ class Train(Run):
                 loss = self.validate_batch(model, data)
                 losses.append(loss)
             loss_avg = mean(losses)
-            self.log({'valid_loss_%s' % valid_dl: loss_avg})
-            print('valid_loss(%s): %.4f' % (valid_dl, loss_avg))
             valid_loss.append(loss_avg)
+            self.log({f'valid_loss_{valid_dl}': loss_avg}, step=step)
+            #print('valid_loss(%s): %.4f' % (valid_dl, loss_avg))
         return valid_loss
 
 
