@@ -47,32 +47,37 @@ class MetaTrain(Train):
         self.summarize(**vars(opt))
 
 
+    def forward(self, model, x, y):
+        y_hat = model(x)
+        loss = self.loss(y_hat, y)
+        return loss
+
+
     def train_batch(self, batch):
-        x_spt, y_spt, x_qry, y_qry = [v.to(device) for v in batch]
+        batch = [v.to(device) for v in batch]
 
         loss_q = 0.
-        for i in range(x_spt.shape[0]):
-            cloned = self.model.clone()
-            loss_qry = 0.
+        for x_spt, y_spt, x_qry, y_qry in zip(*batch):
+            model = self.model.clone()
+            
+            qry_losses = []
             for k in range(self.update_steps):
-                y_spt_hat = cloned(x_spt[i])
-                loss_spt = self.loss(y_spt_hat, y_spt[i])
-                cloned.adapt(loss_spt)
+                loss_spt = self.forward(model, x_spt, y_spt)
+                model.adapt(loss_spt)
 
-                y_qry_hat = cloned(x_qry[i])
-                step_loss_qry = self.loss(y_qry_hat, y_qry[i])
-                loss_qry += step_loss_qry
+                loss_qry = self.forward(model, x_qry, y_qry)
+                qry_losses.append(loss_qry)
                 
-                if step_loss_qry > 1 or math.isnan(step_loss_qry):
+                if loss_qry > 1 or math.isnan(loss_qry): # debug
                     import pdb; pdb.set_trace()
 
             if self.update_steps:
-                loss_qry /= self.update_steps
+                loss_qry = torch.stack(qry_losses).mean()
             else:
-                y_qry_hat = cloned(x_qry[i])
-                loss_qry = self.loss(y_qry_hat, y_qry[i])
+                loss_qry = self.forward(model, x_qry, y_qry)
             
             loss_q += loss_qry
+        import pdb; pdb.set_trace()
         loss_q /= self.opt.nb_tasks
        
         self.optim.zero_grad()
