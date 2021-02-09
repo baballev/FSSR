@@ -48,6 +48,10 @@ if __name__ == "__main__":
         help='Number of updates to perform, will overwrite --epochs if set based on len(train_dl).')
     parser.add_argument('--shots', type=int,
         help='Number of shots in each task.')
+    parser.add_argument('--spt-size', type=int, 
+        help='Number of shots in each task (support size).')
+    parser.add_argument('--qry-size', type=int,
+        help='Number of images in query.')
     parser.add_argument('--loss', default='L1', choices=['VGG', 'L1', 'L2'],
         help='Loss function used for training the model.')
     parser.add_argument('--train-set',
@@ -69,6 +73,8 @@ if __name__ == "__main__":
         help='Number of epochs until learning rate reaches zero. No decay if set to None.')
     parser.add_argument('--weight-decay', type=float, default=0,
         help='Training L2 weight decay.')
+    parser.add_argument('--clip-norm', type=float, default=float('inf'),
+        help='Gradient clipping based on value of largest gradient: see nn.utils.clip_grad_norm_.')
     parser.add_argument('--update-steps', type=int,
         help='For meta-learning: number of gradient updates when finetuning during training.')
     parser.add_argument('--update-test-steps', type=int,

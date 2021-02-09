@@ -11,15 +11,15 @@ from utils import list_images, fetch_image
 
 class ClusterDataset(DatasetWrapper):
     """Generic cluster based task segmentation of dataset."""
-    style_params = {'b': 0.3, 'c': 0.5, 's': 0.3, 'h': 0.4}
+    style_params = {'b': 0.3, 'c': 0.3, 's': 0.3, 'h': 0.4}
 
-    def __init__(self, fp, clusters, scale, size, shots, augment=False, style=False, 
+    def __init__(self, fp, clusters, scale, size, spt_size, qry_size, augment=False, style=False, 
         random=True, loader=default_loader, strict=False):
         
         self.fp = datasets[fp] if fp in datasets else fp
         self.loader = lambda x: loader(os.path.join(self.fp, x))
 
-        self.spt_size, self.qry_size = shots, 1
+        self.spt_size, self.qry_size = spt_size, qry_size
         self.clusters = self.split_clusters(clusters, strict)
         
         self.style = style
