@@ -13,8 +13,8 @@ class BasicDataset(DatasetWrapper):
         self.sizes = t.get_sizes(size, scale)
         self.style = style
         self.augment_name = augment
-        self.augment = t.augment(augment, self.sizes[0])
-        self.scale = t.resize(self.sizes[1])
+        self.scale = t.resize(self.sizes[0])
+        self.augment = t.augment(augment, self.sizes[1])
 
     def __getitem__(self, index):
         img = fetch_image(self.paths[index])
