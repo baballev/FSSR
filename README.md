@@ -1,6 +1,11 @@
 # FSSR
 Few Shot Super Resolution
 
+This is a research project, code is not meant to be ready to run but can give directions ideas to explore on the subject. The repo is a bit messy.
+MAML has been implemented, another idea would be to use a separate network to learn the weights of a CNN which actually performs the super-resolution. This approach is similar to CAR (Content adaptive resampler, paper can be easily found on arxiv)
+
+
+***********************************
 
 ./benchmark -> code avec des metrics pour faire les benchmark type PSNR/SSIM  
 ./data-processing -> Soupe pour formater les données ou couper les images ou autre
